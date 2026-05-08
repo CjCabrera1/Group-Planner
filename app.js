@@ -34,15 +34,15 @@ const STAGE_STYLE = {
 };
 
 const DAY_STYLE = {
-  "Night 1 (Fri May 15 – Sat May 16)": { bg: "#0D0D2B", fg: "#9B8FFF", border: "#7B2FFF" },
-  "Night 2 (Sat May 16 – Sun May 17)": { bg: "#0D2B1A", fg: "#00FFA3", border: "#00C896" },
-  "Night 3 (Sun May 17 – Mon May 18)": { bg: "#2B0D1A", fg: "#FF6FA8", border: "#FF2D78" },
+  "Night 1 (Fri May 15 - Sat May 16)": { bg: "#0D0D2B", fg: "#9B8FFF", border: "#7B2FFF" },
+  "Night 2 (Sat May 16 - Sun May 17)": { bg: "#0D2B1A", fg: "#00FFA3", border: "#00C896" },
+  "Night 3 (Sun May 17 - Mon May 18)": { bg: "#2B0D1A", fg: "#FF6FA8", border: "#FF2D78" },
 };
 
 const DAY_ORDER = [
-  "Night 1 (Fri May 15 – Sat May 16)",
-  "Night 2 (Sat May 16 – Sun May 17)",
-  "Night 3 (Sun May 17 – Mon May 18)",
+  "Night 1 (Fri May 15 - Sat May 16)",
+  "Night 2 (Sat May 16 - Sun May 17)",
+  "Night 3 (Sun May 17 - Mon May 18)",
 ];
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -367,7 +367,7 @@ const TL_START_MIN = 17 * 60;       // 5:00 PM
 const TL_END_MIN   = 29 * 60 + 30;  // 5:30 AM next day (29.5 hrs mark)
 const TL_TOTAL_MIN = TL_END_MIN - TL_START_MIN; // 750 mins
 
-let activeTimelineNight = DAY_ORDER[0];
+let activeTimelineNight = "Night 1 (Fri May 15 - Sat May 16)";
 
 function setupNightTabs() {
   document.querySelectorAll(".night-tab-btn").forEach(btn => {
@@ -603,6 +603,7 @@ function setupTabs() {
       document.querySelectorAll(".tab-content").forEach(s => s.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+      if (btn.dataset.tab === "timeline") renderTimeline();
     });
   });
 }
