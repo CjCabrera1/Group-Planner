@@ -155,10 +155,11 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
     updateHighlights(colP);
   }
 
-  function snapCol(col) {
-    const idx = Math.round(col.scrollTop / ITEM_H);
-    col.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
-  }
+    function snapCol(col) {
+      const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+      const idx    = Math.max(0, Math.min(items.length - 1, Math.round(col.scrollTop / ITEM_H)));
+      col.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
+    }
 
   [colH, colM, colP].forEach(col => {
 // One item per wheel tick — throttled
@@ -169,7 +170,8 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
       wheelLocked = true;
       const direction = e.deltaY > 0 ? 1 : -1;
       const currentIdx = Math.round(col.scrollTop / ITEM_H);
-      const newIdx = Math.max(0, currentIdx + direction);
+      const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+      const newIdx = Math.max(0, Math.min(items.length - 1, currentIdx + direction));
       col.scrollTo({ top: newIdx * ITEM_H, behavior: "smooth" });
       setTimeout(syncHidden, 150);
       setTimeout(() => { wheelLocked = false; }, 200);
