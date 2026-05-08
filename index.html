@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ EDC LV 2026 — Group Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <canvas id="starfield"></canvas>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo-block">
+        <span class="bolt">⚡</span>
+        <div class="title-stack">
+          <h1>EDC LAS VEGAS 2026</h1>
+          <p class="subtitle">GROUP PLANNER · UNDER THE ELECTRIC SKY</p>
+        </div>
+        <span class="bolt">⚡</span>
+      </div>
+      <p class="dates">MAY 15 – 17 · LAS VEGAS MOTOR SPEEDWAY</p>
+      <div class="live-badge" id="live-badge">
+        <span class="live-dot"></span> LIVE
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="signup">🎪 Sign Up</button>
+    <button class="tab-btn" data-tab="groupplan">👥 Group Plan</button>
+  </nav>
+
+  <!-- SIGN UP TAB -->
+  <section id="tab-signup" class="tab-content active">
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🎤 Add Your Pick</h2>
+        <p class="panel-sub">Fill in the form and hit Add — your pick syncs instantly for everyone.</p>
+      </div>
+      <div class="form-grid">
+        <div class="field-group">
+          <label for="input-name">👤 Your Name</label>
+          <input id="input-name" type="text" placeholder="e.g. CJ" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label for="input-artist">🎤 Artist / Act</label>
+          <input id="input-artist" type="text" placeholder="e.g. Seven Lions" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label for="input-stage">🎪 Stage</label>
+          <select id="input-stage">
+            <option value="">— Select Stage —</option>
+            <option value="Kinetic Field">Kinetic Field</option>
+            <option value="Cosmic Meadow">Cosmic Meadow</option>
+            <option value="Neon Garden">Neon Garden</option>
+            <option value="Circuit Grounds">Circuit Grounds</option>
+            <option value="Basspod">Basspod</option>
+            <option value="Wasteland">Wasteland</option>
+            <option value="Quantum Valley">Quantum Valley</option>
+            <option value="Bionic Jungle">Bionic Jungle</option>
+            <option value="Stereobloom">Stereobloom</option>
+            <option value="Takis Rave Hangar">Takis Rave Hangar</option>
+            <option value="Forest House">Forest House</option>
+            <option value="Casa Bacardi">Casa Bacardi</option>
+            <option value="Art Car">Art Car</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="input-day">📅 Night</label>
+          <select id="input-day">
+            <option value="">— Select Night —</option>
+            <option value="Night 1 (Fri May 15 – Sat May 16)">Night 1 (Fri May 15 – Sat May 16)</option>
+            <option value="Night 2 (Sat May 16 – Sun May 17)">Night 2 (Sat May 16 – Sun May 17)</option>
+            <option value="Night 3 (Sun May 17 – Mon May 18)">Night 3 (Sun May 17 – Mon May 18)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="input-start">⏱ Start Time</label>
+          <input id="input-start" type="text" placeholder="e.g. 11:15 PM" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          <label for="input-end">⏱ End Time <span class="optional">(optional)</span></label>
+          <input id="input-end" type="text" placeholder="blank = ~1 hr set" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button id="btn-add-pick" class="btn-primary">＋ Add Pick</button>
+        <button id="btn-clear-form" class="btn-ghost">✕ Clear</button>
+      </div>
+      <div id="add-error" class="error-msg hidden"></div>
+      <div id="add-success" class="success-msg hidden"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📡 Live Picks Feed</h2>
+        <span id="total-count" class="badge">0 picks</span>
+      </div>
+      <div id="all-picks-list">
+        <p class="empty-state">No picks yet — add yours above!</p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- GROUP PLAN TAB -->
+  <section id="tab-groupplan" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>👥 Group Plan</h2>
+        <p class="panel-sub">Sorted by night → start time · Conflicts flagged in red · Updates live</p>
+      </div>
+      <div id="group-plan-content">
+        <p class="empty-state">Add picks in the Sign Up tab to see the group plan.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
