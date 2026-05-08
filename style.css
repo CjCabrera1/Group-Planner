@@ -271,7 +271,7 @@ input, select {
   font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
-  -webkit-appearance: none;
+  appearance: none;
 }
 
 input::placeholder { color: var(--text-dim); }
@@ -592,6 +592,108 @@ select option { background: #12003A; color: var(--text); }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+/* ── DIAL PICKER ─────────────────────────────────────────────── */
+.dial-group { grid-column: span 1; }
+
+.dial-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #08001A;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  height: 120px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Center selection highlight */
+.dial-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 36px;
+  background: #7B2FFF22;
+  border-top: 1px solid #7B2FFF66;
+  border-bottom: 1px solid #7B2FFF66;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.dial-sep {
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  padding: 0 2px;
+  z-index: 3;
+}
+
+.dial-col {
+  flex: 1;
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: pointer;
+}
+
+.dial-col::-webkit-scrollbar { display: none; }
+
+.dial-item {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  scroll-snap-align: center;
+  transition: color 0.15s;
+  user-select: none;
+}
+
+.dial-item.selected {
+  color: var(--gold);
+  text-shadow: 0 0 10px var(--gold);
+}
+
+/* Fade top and bottom */
+.dial-col::before,
+.dial-col::after {
+  content: '';
+  display: block;
+  height: 42px;
+}
+
+.dial-none-wrap {
+  margin-top: 8px;
+}
+
+.dial-none-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  letter-spacing: 0;
+  text-shadow: none;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.dial-none-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--purple);
+  cursor: pointer;
+}
 
 /* ── CREW BUBBLES ───────────────────────────────────────────── */
 .crew-section {

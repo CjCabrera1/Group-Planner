@@ -82,13 +82,30 @@
             <option value="Night 3 (Sun May 17 - Mon May 18)">Night 3 (Sun May 17 - Mon May 18)</option>
           </select>
         </div>
-        <div class="field-group">
-          <label for="input-start">⏱ Start Time — <span id="start-display" style="color:#FFD600">5:00 PM</span></label>
-          <input id="input-start" type="range" min="0" max="149" value="0" step="1" class="time-slider" />
+        <div class="field-group dial-group">
+          <label>⏱ Start Time</label>
+          <div class="dial-wrap">
+            <div class="dial-col" id="dial-start-h"></div>
+            <div class="dial-sep">:</div>
+            <div class="dial-col" id="dial-start-m"></div>
+            <div class="dial-col" id="dial-start-p"></div>
+          </div>
+          <input type="hidden" id="input-start" value="0" />
         </div>
-        <div class="field-group">
-          <label for="input-end">⏱ End Time <span class="optional">(optional)</span> — <span id="end-display" style="color:#7B2FFF">None</span></label>
-          <input id="input-end" type="range" min="0" max="150" value="150" step="1" class="time-slider" />
+        <div class="field-group dial-group">
+          <label>⏱ End Time <span class="optional">(optional)</span></label>
+          <div class="dial-wrap">
+            <div class="dial-col" id="dial-end-h"></div>
+            <div class="dial-sep">:</div>
+            <div class="dial-col" id="dial-end-m"></div>
+            <div class="dial-col" id="dial-end-p"></div>
+          </div>
+          <div class="dial-none-wrap">
+            <label class="dial-none-label">
+              <input type="checkbox" id="end-none-check" checked /> No end time
+            </label>
+          </div>
+          <input type="hidden" id="input-end" value="150" />
         </div>
       </div>
       <div class="form-actions">

@@ -4,7 +4,6 @@
 // ============================================================
 
 // ── FIREBASE CONFIG ──────────────────────────────────────────
-// Replace these values with your own Firebase project config.
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
   authDomain: "edc-planner-18de3.firebaseapp.com",
@@ -14,7 +13,6 @@ const FIREBASE_CONFIG = {
   appId: "1:364050253720:web:f03fbaa8afc412d68a4ded",
   measurementId: "G-HC79E255XM"
 };
-
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
@@ -77,6 +75,8 @@ function subscribeToPicksRealtime() {
         renderSignupFeed();
         renderGroupPlan();
         renderTimeline();
+        renderPersonSelector();
+        renderPersonalTimeline();
         updateLiveBadge(true);
       },
       (err) => {
@@ -86,17 +86,104 @@ function subscribeToPicksRealtime() {
     );
 }
 
-// ── SLIDER TIME HELPER ────────────────────────────────────────
-// Slider range: 0–149 = 5:00 PM → 5:25 AM (5-min steps)
-// Value 150 on end slider = "None"
-function sliderToTime(val) {
-  const totalMins = 17 * 60 + val * 5;
+// ── DIAL TIME HELPERS ────────────────────────────────────────
+// EDC window: 5:00 PM (index 0) → 5:25 AM (index 149), 5-min steps
+// index 150 on end dial = "None"
+const TIME_SLOTS = [];
+for (let i = 0; i <= 149; i++) {
+  const totalMins = 17 * 60 + i * 5;
   const wrapped   = totalMins % (24 * 60);
   const h24 = Math.floor(wrapped / 60);
   const min = wrapped % 60;
   const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
   const ap  = h24 < 12 ? "AM" : "PM";
-  return `${h12}:${String(min).padStart(2, "0")} ${ap}`;
+  TIME_SLOTS.push({ h12, min, ap, label: `${h12}:${String(min).padStart(2, "0")} ${ap}` });
+}
+
+function sliderToTime(val) {
+  if (val >= 150 || val < 0) return "";
+  return TIME_SLOTS[val].label;
+}
+
+// ── DIAL BUILDER ─────────────────────────────────────────────
+function buildDial(colH, colM, colP, hiddenInput, isEnd) {
+  const hours   = [...new Set(TIME_SLOTS.map(s => String(s.h12)))];
+  const minutes = [...new Set(TIME_SLOTS.map(s => String(s.min).padStart(2, "0")))];
+  const periods = ["PM", "AM"];
+
+  function populate(col, items) {
+    col.innerHTML = items.map(v =>
+      `<div class="dial-item" data-val="${v}">${v}</div>`
+    ).join("");
+  }
+
+  populate(colH, hours);
+  populate(colM, minutes);
+  populate(colP, periods);
+
+  function getSelectedVal(col) {
+    const items  = [...col.querySelectorAll(".dial-item")];
+    const colTop = col.scrollTop;
+    const center = colTop + col.clientHeight / 2;
+    let closest = items[0];
+    let minDist = Infinity;
+    items.forEach(item => {
+      const dist = Math.abs(item.offsetTop + item.offsetHeight / 2 - center);
+      if (dist < minDist) { minDist = dist; closest = item; }
+    });
+    return closest ? closest.dataset.val : items[0].dataset.val;
+  }
+
+  function updateHighlights() {
+    [colH, colM, colP].forEach(col => {
+      const items  = [...col.querySelectorAll(".dial-item")];
+      const colTop = col.scrollTop;
+      const center = colTop + col.clientHeight / 2;
+      items.forEach(item => {
+        const dist = Math.abs(item.offsetTop + item.offsetHeight / 2 - center);
+        item.classList.toggle("selected", dist < 20);
+      });
+    });
+  }
+
+  function syncHidden() {
+    const h  = getSelectedVal(colH);
+    const m  = getSelectedVal(colM);
+    const ap = getSelectedVal(colP);
+    const label = `${h}:${m} ${ap}`;
+    const idx = TIME_SLOTS.findIndex(s => s.label === label);
+    hiddenInput.value = idx === -1 ? (isEnd ? "150" : "0") : String(idx);
+    updateHighlights();
+  }
+
+  [colH, colM, colP].forEach(col => {
+    col.addEventListener("scroll", syncHidden, { passive: true });
+  });
+
+  function scrollToItem(col, val) {
+    const item = [...col.querySelectorAll(".dial-item")].find(i => i.dataset.val === String(val));
+    if (item) col.scrollTop = item.offsetTop - col.clientHeight / 2 + item.offsetHeight / 2;
+  }
+
+  const initSlot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
+  setTimeout(() => {
+    scrollToItem(colH, String(initSlot.h12));
+    scrollToItem(colM, String(initSlot.min).padStart(2, "0"));
+    scrollToItem(colP, initSlot.ap);
+    setTimeout(syncHidden, 50);
+  }, 0);
+}
+
+function resetDial(colH, colM, colP, hiddenInput, isEnd) {
+  const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
+  function scrollToItem(col, val) {
+    const item = [...col.querySelectorAll(".dial-item")].find(i => i.dataset.val === String(val));
+    if (item) col.scrollTop = item.offsetTop - col.clientHeight / 2 + item.offsetHeight / 2;
+  }
+  scrollToItem(colH, String(slot.h12));
+  scrollToItem(colM, String(slot.min).padStart(2, "0"));
+  scrollToItem(colP, slot.ap);
+  hiddenInput.value = isEnd ? "150" : "0";
 }
 
 // ── FORM LOGIC ────────────────────────────────────────────────
@@ -107,29 +194,42 @@ function setupForm() {
   btn.addEventListener("click", handleAddPick);
   clearBtn.addEventListener("click", clearForm);
 
-  // Enter key on text inputs
   ["input-name", "input-artist"].forEach(id => {
     document.getElementById(id).addEventListener("keydown", (e) => {
       if (e.key === "Enter") handleAddPick();
     });
   });
 
-  // Time sliders
-  const startSlider = document.getElementById("input-start");
-  const endSlider   = document.getElementById("input-end");
-  const startDisp   = document.getElementById("start-display");
-  const endDisp     = document.getElementById("end-display");
+  // Build dials
+  buildDial(
+    document.getElementById("dial-start-h"),
+    document.getElementById("dial-start-m"),
+    document.getElementById("dial-start-p"),
+    document.getElementById("input-start"),
+    false
+  );
+  buildDial(
+    document.getElementById("dial-end-h"),
+    document.getElementById("dial-end-m"),
+    document.getElementById("dial-end-p"),
+    document.getElementById("input-end"),
+    true
+  );
 
-  startSlider.addEventListener("input", () => {
-    startDisp.textContent = sliderToTime(+startSlider.value);
-  });
+  // End "no end time" checkbox
+  const noneCheck   = document.getElementById("end-none-check");
+  const endDialWrap = document.getElementById("dial-end-wrap");
+  if (noneCheck && endDialWrap) {
+    endDialWrap.style.opacity = "0.3";
+    endDialWrap.style.pointerEvents = "none";
+    noneCheck.addEventListener("change", () => {
+      const disabled = noneCheck.checked;
+      endDialWrap.style.opacity = disabled ? "0.3" : "1";
+      endDialWrap.style.pointerEvents = disabled ? "none" : "auto";
+      if (disabled) document.getElementById("input-end").value = "150";
+    });
+  }
 
-  endSlider.addEventListener("input", () => {
-    const v = +endSlider.value;
-    endDisp.textContent = v === 150 ? "None" : sliderToTime(v);
-  });
-
-  // Remember name
   const savedName = localStorage.getItem("edc_planner_name");
   if (savedName) document.getElementById("input-name").value = savedName;
 }
@@ -143,27 +243,23 @@ async function handleAddPick() {
   const stage  = val("input-stage");
   const day    = val("input-day");
 
-  // Read slider values
   const startVal = +document.getElementById("input-start").value;
   const endVal   = +document.getElementById("input-end").value;
   const start    = sliderToTime(startVal);
-  const end      = endVal === 150 ? "" : sliderToTime(endVal);
+  const end      = endVal >= 150 ? "" : sliderToTime(endVal);
 
-  // Validation
   if (!name)   return showError("add-error", "Please enter your name.");
   if (!artist) return showError("add-error", "Please enter an artist name.");
   if (!stage)  return showError("add-error", "Please select a stage.");
   if (!day)    return showError("add-error", "Please select a night.");
+  if (!start)  return showError("add-error", "Please set a start time.");
 
-  // Normalize artist to title case
   const artistNormalized = artist.replace(/\w\S*/g, w =>
     w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
   );
 
-  // Persist name
   localStorage.setItem("edc_planner_name", name);
 
-  // Save to Firestore
   const btn = document.getElementById("btn-add-pick");
   btn.disabled = true;
   btn.textContent = "Saving…";
@@ -181,12 +277,29 @@ async function handleAddPick() {
 
     showSuccess("add-success", `✅ ${artistNormalized} added! It's live for everyone.`);
 
-    // Reset artist field, keep name/stage/day for quick multi-entry
     document.getElementById("input-artist").value = "";
-    document.getElementById("input-start").value  = "0";
-    document.getElementById("input-end").value    = "150";
-    document.getElementById("start-display").textContent = sliderToTime(0);
-    document.getElementById("end-display").textContent   = "None";
+    resetDial(
+      document.getElementById("dial-start-h"),
+      document.getElementById("dial-start-m"),
+      document.getElementById("dial-start-p"),
+      document.getElementById("input-start"),
+      false
+    );
+    resetDial(
+      document.getElementById("dial-end-h"),
+      document.getElementById("dial-end-m"),
+      document.getElementById("dial-end-p"),
+      document.getElementById("input-end"),
+      true
+    );
+    const noneCheck   = document.getElementById("end-none-check");
+    const endDialWrap = document.getElementById("dial-end-wrap");
+    if (noneCheck && endDialWrap) {
+      noneCheck.checked = true;
+      endDialWrap.style.opacity = "0.3";
+      endDialWrap.style.pointerEvents = "none";
+      document.getElementById("input-end").value = "150";
+    }
     document.getElementById("input-artist").focus();
 
   } catch (e) {
@@ -210,10 +323,28 @@ function clearForm() {
   document.getElementById("input-artist").value = "";
   document.getElementById("input-stage").value  = "";
   document.getElementById("input-day").value    = "";
-  document.getElementById("input-start").value  = "0";
-  document.getElementById("input-end").value    = "150";
-  document.getElementById("start-display").textContent = sliderToTime(0);
-  document.getElementById("end-display").textContent   = "None";
+  resetDial(
+    document.getElementById("dial-start-h"),
+    document.getElementById("dial-start-m"),
+    document.getElementById("dial-start-p"),
+    document.getElementById("input-start"),
+    false
+  );
+  resetDial(
+    document.getElementById("dial-end-h"),
+    document.getElementById("dial-end-m"),
+    document.getElementById("dial-end-p"),
+    document.getElementById("input-end"),
+    true
+  );
+  const noneCheck   = document.getElementById("end-none-check");
+  const endDialWrap = document.getElementById("dial-end-wrap");
+  if (noneCheck && endDialWrap) {
+    noneCheck.checked = true;
+    endDialWrap.style.opacity = "0.3";
+    endDialWrap.style.pointerEvents = "none";
+    document.getElementById("input-end").value = "150";
+  }
   hideMsg("add-error");
   hideMsg("add-success");
 }
@@ -286,41 +417,31 @@ function renderGroupPlan() {
     return;
   }
 
-  // Deduplicate: same artist+day, start times within 15 mins → merge into one row
   const FUZZY_MINS = 15;
   const mergeMap = new Map();
 
   allPicks.forEach(p => {
     const artistDay = `${p.artist.toLowerCase()}|||${p.day}`;
     const pMins = parseTimeToMins(p.start) || 0;
-
-    // Check if an existing entry for same artist+day is within fuzzy window
     let matched = null;
     for (const [key, entry] of mergeMap.entries()) {
       if (!key.startsWith(artistDay)) continue;
       const entryMins = parseTimeToMins(entry.start) || 0;
-      if (Math.abs(pMins - entryMins) <= FUZZY_MINS) {
-        matched = entry;
-        break;
-      }
+      if (Math.abs(pMins - entryMins) <= FUZZY_MINS) { matched = entry; break; }
     }
-
     if (matched) {
       if (!matched.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
         matched.names.push(p.name);
-      // Use the earlier start time and later end time for the merged row
       const matchedMins = parseTimeToMins(matched.start) || 0;
       if (pMins < matchedMins) matched.start = p.start;
       if (p.end && (!matched.end || (parseTimeToMins(p.end) || 0) > (parseTimeToMins(matched.end) || 0)))
         matched.end = p.end;
     } else {
-      const key = `${artistDay}|||${p.start}`;
-      mergeMap.set(key, { ...p, names: [p.name] });
+      mergeMap.set(`${artistDay}|||${p.start}`, { ...p, names: [p.name] });
     }
   });
 
   const merged = [...mergeMap.values()];
-
   merged.sort((a, b) => {
     const dA = DAY_ORDER.indexOf(a.day);
     const dB = DAY_ORDER.indexOf(b.day);
@@ -383,14 +504,9 @@ function renderGroupPlan() {
       const endDisplay = entry.end ? entry.end : "~1 hr";
       const conflicts = getConflicts(entry);
       const hasConflict = conflicts.length > 0;
-
-      const whoChips = entry.names
-        .map(n => `<span class="who-chip">${esc(n)}</span>`)
-        .join(" ");
-
+      const whoChips = entry.names.map(n => `<span class="who-chip">${esc(n)}</span>`).join(" ");
       const conflictText = hasConflict
-        ? [...new Set(conflicts.map(c =>
-            `⚠️ ${esc(c.name)} → ${esc(c.other.artist)} @ ${esc(c.other.start)}`))]
+        ? [...new Set(conflicts.map(c => `⚠️ ${esc(c.name)} → ${esc(c.other.artist)} @ ${esc(c.other.start)}`))]
             .join("<br>")
         : `<span class="conflict-ok">✅ Clear</span>`;
 
@@ -416,8 +532,7 @@ function renderGroupPlan() {
   const people = [...new Set(allPicks.map(p => p.name))];
   const pairCounts = new Map();
 
-  const allMergedForCrew = [...mergeMap.values()];
-  allMergedForCrew.forEach(entry => {
+  [...mergeMap.values()].forEach(entry => {
     const names = entry.names;
     for (let i = 0; i < names.length; i++) {
       for (let j = i + 1; j < names.length; j++) {
@@ -427,10 +542,8 @@ function renderGroupPlan() {
     }
   });
 
-  // Build duos — each person can only appear in one duo (their best match)
   const usedPeople = new Set();
   const crews = [];
-
   [...pairCounts.entries()]
     .filter(([, count]) => count >= 1)
     .sort((a, b) => b[1] - a[1])
@@ -443,10 +556,8 @@ function renderGroupPlan() {
       }
     });
 
-  // Anyone not matched into a duo goes solo
   people.forEach(p => {
-    if (!usedPeople.has(p))
-      crews.push({ members: [p], score: 0 });
+    if (!usedPeople.has(p)) crews.push({ members: [p], score: 0 });
   });
 
   const CREW_COLORS = [
@@ -463,7 +574,7 @@ function renderGroupPlan() {
   const crewHTML = crews.length === 0 ? "" : `
     <div class="crew-section">
       <div class="crew-header">
-        <span class="crew-title">🫂 Suggested Duo</span>
+        <span class="crew-title">🫂 Suggested Duos</span>
         <span class="crew-sub">Based on shared sets — stay together, rave together</span>
       </div>
       <div class="crew-grid">
@@ -471,7 +582,6 @@ function renderGroupPlan() {
           const col = CREW_COLORS[ci % CREW_COLORS.length];
           const isSolo = crew.members.length === 1;
           const label = isSolo ? "🎧 Side Quester" : "🤝 Duo";
-
           const pairs = [];
           for (let i = 0; i < crew.members.length; i++) {
             for (let j = i + 1; j < crew.members.length; j++) {
@@ -480,7 +590,6 @@ function renderGroupPlan() {
               if (count > 0) pairs.push(`${crew.members[i]} & ${crew.members[j]}: ${count} shared`);
             }
           }
-
           return `
             <div class="crew-bubble" style="background:${col.light};border-color:${col.bg}">
               <div class="crew-label" style="color:${col.bg}">
@@ -513,8 +622,151 @@ function setupNightTabs() {
       btn.classList.add("active");
       activeTimelineNight = btn.dataset.night;
       renderTimeline();
+      renderPersonalTimeline();
     });
   });
+}
+
+// ── PERSONAL TIMELINE ────────────────────────────────────────
+let activePersonTimeline = null;
+
+function renderPersonSelector() {
+  const selector = document.getElementById("person-selector");
+  if (!selector) return;
+
+  const people = [...new Set(allPicks.map(p => p.name))].sort();
+
+  if (people.length === 0) {
+    selector.innerHTML = `<p class="empty-state" style="padding:8px 0">No picks added yet.</p>`;
+    return;
+  }
+
+  selector.innerHTML = people.map(name => `
+    <button class="person-btn ${activePersonTimeline === name ? "active" : ""}"
+      onclick="selectPerson('${esc(name)}')">${esc(name)}
+    </button>`
+  ).join("");
+}
+
+function selectPerson(name) {
+  activePersonTimeline = name;
+  renderPersonSelector();
+  renderPersonalTimeline();
+}
+
+function renderPersonalTimeline() {
+  const container = document.getElementById("personal-timeline-content");
+  if (!container) return;
+
+  if (!activePersonTimeline) {
+    container.innerHTML = `<p class="empty-state">Select a person above to see their personal timeline.</p>`;
+    return;
+  }
+
+  const nightPicks = allPicks.filter(p =>
+    p.name.toLowerCase() === activePersonTimeline.toLowerCase() &&
+    p.day === activeTimelineNight
+  );
+
+  if (nightPicks.length === 0) {
+    container.innerHTML = `<p class="empty-state">${esc(activePersonTimeline)} has no picks for this night.</p>`;
+    return;
+  }
+
+  const byStage = new Map();
+  nightPicks.forEach(p => {
+    if (!byStage.has(p.stage)) byStage.set(p.stage, []);
+    byStage.get(p.stage).push(p);
+  });
+
+  const stagesWithPicks = [...byStage.keys()].sort((a, b) => {
+    const order = Object.keys(STAGE_STYLE);
+    return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) -
+           (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
+  });
+
+  function minToPct(mins) {
+    return ((mins - TL_START_MIN) / TL_TOTAL_MIN) * 100;
+  }
+
+  function pickToBlock(p) {
+    let startM = parseTimeToMins(p.start);
+    if (startM === null) return null;
+    let endM = p.end ? parseTimeToMins(p.end) : startM + 60;
+    if (!endM) endM = startM + 60;
+    startM = Math.max(startM, TL_START_MIN);
+    endM   = Math.min(endM, TL_END_MIN);
+    if (startM >= endM) return null;
+    return { left: minToPct(startM), width: minToPct(endM) - minToPct(startM) };
+  }
+
+  const axisLabels = [];
+  for (let m = TL_START_MIN; m <= TL_END_MIN; m += 60) {
+    const pct  = minToPct(m);
+    const hour = m % (24 * 60);
+    const h24  = Math.floor(hour / 60);
+    const min  = hour % 60;
+    const h12  = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    const ampm = h24 < 12 ? "AM" : "PM";
+    axisLabels.push({
+      pct,
+      label: `${h12}${min > 0 ? ":" + String(min).padStart(2, "0") : ""}${ampm}`,
+      isMidnight: h24 === 0 && min === 0
+    });
+  }
+
+  const gridHTML = axisLabels.map(a =>
+    `<div class="tl-gridline${a.isMidnight ? " midnight" : ""}" style="left:${a.pct}%"></div>`
+  ).join("");
+
+  const axisHTML = `<div style="position:relative;height:18px;">` +
+    axisLabels.map(a => `<span class="tl-axis-label" style="left:${a.pct}%">${a.label}</span>`).join("") +
+  `</div>`;
+
+  const ds = DAY_STYLE[activeTimelineNight] || { fg: "#B39DDB" };
+  const midnightPct = minToPct(24 * 60);
+
+  const rowsHTML = stagesWithPicks.map(stage => {
+    const st = STAGE_STYLE[stage] || STAGE_STYLE["Other"];
+    const blocksHTML = byStage.get(stage).map(p => {
+      const block = pickToBlock(p);
+      if (!block) return "";
+      return `<div class="tl-block"
+        style="left:${block.left}%;width:${block.width}%;background:${st.bg};color:${st.fg}"
+        data-artist="${esc(p.artist)}"
+        data-stage="${esc(stage)}"
+        data-start="${esc(p.start)}"
+        data-end="${esc(p.end || "~1hr")}"
+        data-names="${esc(activePersonTimeline)}"
+        onmouseenter="showTooltip(event,this)"
+        onmouseleave="hideTooltip()"
+        ontouchstart="showTooltip(event,this)"
+      >
+        <span class="tl-block-label">${esc(p.artist)}</span>
+      </div>`;
+    }).join("");
+
+    return `
+      <div class="tl-row">
+        <div class="tl-stage-label" style="color:${st.bg};text-shadow:0 0 8px ${st.bg}44">${esc(stage)}</div>
+        <div class="tl-row-track">${blocksHTML}</div>
+      </div>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="tl-wrap">
+      <div class="tl-grid">
+        <div class="tl-gridlines">${gridHTML}
+          <div style="position:absolute;top:-18px;left:calc(${midnightPct}% - 1px);
+            font-family:var(--font-display);font-size:0.5rem;color:${ds.fg};
+            letter-spacing:0.1em;white-space:nowrap;transform:translateX(-50%)">
+            ── MIDNIGHT ──
+          </div>
+        </div>
+        <div style="margin-left:130px">${axisHTML}</div>
+        ${rowsHTML}
+      </div>
+    </div>`;
 }
 
 function renderTimeline() {
@@ -579,9 +831,7 @@ function renderTimeline() {
     startM = Math.max(startM, TL_START_MIN);
     endM   = Math.min(endM, TL_END_MIN);
     if (startM >= endM) return null;
-    const left  = minToPct(startM);
-    const width = minToPct(endM) - left;
-    return { left, width };
+    return { left: minToPct(startM), width: minToPct(endM) - minToPct(startM) };
   }
 
   const axisLabels = [];
@@ -735,7 +985,11 @@ function setupTabs() {
       document.querySelectorAll(".tab-content").forEach(s => s.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
-      if (btn.dataset.tab === "timeline") renderTimeline();
+      if (btn.dataset.tab === "timeline") {
+        renderTimeline();
+        renderPersonSelector();
+        renderPersonalTimeline();
+      }
     });
   });
 }
