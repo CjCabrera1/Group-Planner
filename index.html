@@ -32,6 +32,7 @@
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="signup">🎪 Sign Up</button>
     <button class="tab-btn" data-tab="groupplan">👥 Group Plan</button>
+    <button class="tab-btn" data-tab="timeline">📊 Timeline</button>
   </nav>
 
   <!-- SIGN UP TAB -->
@@ -121,6 +122,29 @@
       </div>
     </div>
   </section>
+
+  <!-- TIMELINE TAB -->
+  <section id="tab-timeline" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>📊 Timeline</h2>
+        <p class="panel-sub">Visual Gantt chart per night · Each row = a stage · Hover a set for details</p>
+      </div>
+
+      <div class="timeline-night-tabs">
+        <button class="night-tab-btn active" data-night="Night 1 (Fri May 15 – Sat May 16)">Night 1</button>
+        <button class="night-tab-btn" data-night="Night 2 (Sat May 16 – Sun May 17)">Night 2</button>
+        <button class="night-tab-btn" data-night="Night 3 (Sun May 17 – Mon May 18)">Night 3</button>
+      </div>
+
+      <div id="timeline-content">
+        <p class="empty-state">Add picks in the Sign Up tab to see the timeline.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tooltip -->
+  <div id="tl-tooltip" class="tl-tooltip hidden"></div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>

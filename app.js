@@ -3,17 +3,18 @@
 //  Real-time via Firebase Firestore
 // ============================================================
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// ── FIREBASE CONFIG ──────────────────────────────────────────
+// Replace these values with your own Firebase project config.
+// Instructions: https://firebase.google.com/docs/web/setup
 const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
-  authDomain:        "edc-planner-18de3.firebaseapp.com",
-  projectId:         "edc-planner-18de3",
-  storageBucket:     "edc-planner-18de3.firebasestorage.app",
-  messagingSenderId: "364050253720",
-  appId:             "1:364050253720:web:f03fbaa8afc412d68a4ded",
-  measurementId:     "G-HC79E255XM"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID",
 };
+
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
   "Kinetic Field":     { bg: "#7B2FFF", fg: "#FFFFFF", border: "#9B5FFF" },
@@ -60,6 +61,7 @@ function initApp() {
   setupTabs();
   setupForm();
   setupStarfield();
+  setupNightTabs();
   subscribeToPicksRealtime();
 }
 
@@ -73,6 +75,7 @@ function subscribeToPicksRealtime() {
         allPicks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderSignupFeed();
         renderGroupPlan();
+        renderTimeline();
         updateLiveBadge(true);
       },
       (err) => {
@@ -120,7 +123,6 @@ async function handleAddPick() {
   if (!day)    return showError("add-error", "Please select a night.");
   if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
   if (!parseTimeToMins(start)) return showError("add-error", "Start time format not recognized. Try e.g. 11:15 PM or 1:05 AM.");
-if (end && !parseTimeToMins(end)) return showError("add-error", "End time format not recognized. Try e.g. 11:15 PM or 1:05 AM.");
 
   // Persist name for convenience
   localStorage.setItem("edc_planner_name", name);
@@ -358,6 +360,215 @@ function renderGroupPlan() {
 
   container.innerHTML = html;
 }
+
+// ── TIMELINE ──────────────────────────────────────────────────
+// EDC runs 5PM–5:30AM. We display 5PM(17:00) → 5:30AM(29:30) = 12.5 hrs
+const TL_START_MIN = 17 * 60;       // 5:00 PM
+const TL_END_MIN   = 29 * 60 + 30;  // 5:30 AM next day (29.5 hrs mark)
+const TL_TOTAL_MIN = TL_END_MIN - TL_START_MIN; // 750 mins
+
+let activeTimelineNight = DAY_ORDER[0];
+
+function setupNightTabs() {
+  document.querySelectorAll(".night-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".night-tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeTimelineNight = btn.dataset.night;
+      renderTimeline();
+    });
+  });
+}
+
+function renderTimeline() {
+  const container = document.getElementById("timeline-content");
+  if (!container) return;
+
+  if (allPicks.length === 0) {
+    container.innerHTML = `<p class="empty-state">Add picks in the Sign Up tab to see the timeline.</p>`;
+    return;
+  }
+
+  // Filter picks for the active night
+  const nightPicks = allPicks.filter(p => p.day === activeTimelineNight);
+
+  if (nightPicks.length === 0) {
+    container.innerHTML = `<p class="empty-state">No picks added for this night yet.</p>`;
+    return;
+  }
+
+  // Group by stage
+  const byStage = new Map();
+  nightPicks.forEach(p => {
+    if (!byStage.has(p.stage)) byStage.set(p.stage, []);
+    byStage.get(p.stage).push(p);
+  });
+
+  // Also show all known stages that have at least one pick
+  const stagesWithPicks = [...byStage.keys()].sort((a, b) => {
+    const order = Object.keys(STAGE_STYLE);
+    return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) -
+           (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
+  });
+
+  // Merge same artist picks (dedupe names)
+  function getMergedPicks(picks) {
+    const map = new Map();
+    picks.forEach(p => {
+      const key = `${p.artist.toLowerCase()}|||${p.start}`;
+      if (!map.has(key)) map.set(key, { ...p, names: [p.name] });
+      else {
+        const e = map.get(key);
+        if (!e.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
+          e.names.push(p.name);
+      }
+    });
+    return [...map.values()];
+  }
+
+  // pct position helpers
+  function minToPct(mins) {
+    return ((mins - TL_START_MIN) / TL_TOTAL_MIN) * 100;
+  }
+
+  function pickToBlock(p) {
+    let startM = parseTimeToMins(p.start);
+    if (startM === null) return null;
+    let endM = p.end ? parseTimeToMins(p.end) : startM + 60;
+    if (!endM) endM = startM + 60;
+    // clamp to window
+    startM = Math.max(startM, TL_START_MIN);
+    endM   = Math.min(endM,   TL_END_MIN);
+    if (startM >= endM) return null;
+    const left  = minToPct(startM);
+    const width = minToPct(endM) - left;
+    return { left, width };
+  }
+
+  // Build time axis labels (every hour)
+  const axisLabels = [];
+  for (let m = TL_START_MIN; m <= TL_END_MIN; m += 60) {
+    const pct  = minToPct(m);
+    const hour = m % (24 * 60);
+    const h24  = Math.floor(hour / 60);
+    const min  = hour % 60;
+    const h12  = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    const ampm = h24 < 12 ? "AM" : "PM";
+    const label = `${h12}${min > 0 ? ":" + String(min).padStart(2,"0") : ""}${ampm}`;
+    const isMidnight = h24 === 0 && min === 0;
+    axisLabels.push({ pct, label, isMidnight });
+  }
+
+  // Build gridlines HTML
+  const gridHTML = axisLabels.map(a =>
+    `<div class="tl-gridline${a.isMidnight ? " midnight" : ""}" style="left:${a.pct}%"></div>`
+  ).join("");
+
+  // Build axis HTML
+  const axisHTML = `<div style="position:relative;height:18px;">` +
+    axisLabels.map(a =>
+      `<span class="tl-axis-label" style="left:${a.pct}%">${a.label}</span>`
+    ).join("") +
+  `</div>`;
+
+  // Build stage rows
+  const rowsHTML = stagesWithPicks.map(stage => {
+    const st      = STAGE_STYLE[stage] || STAGE_STYLE["Other"];
+    const picks   = getMergedPicks(byStage.get(stage) || []);
+
+    const blocksHTML = picks.map(p => {
+      const block = pickToBlock(p);
+      if (!block) return "";
+      const names = p.names.join(", ");
+      const endDisplay = p.end || "~1hr";
+      return `<div class="tl-block"
+        style="left:${block.left}%;width:${block.width}%;background:${st.bg};color:${st.fg}"
+        data-artist="${esc(p.artist)}"
+        data-stage="${esc(stage)}"
+        data-start="${esc(p.start)}"
+        data-end="${esc(endDisplay)}"
+        data-names="${esc(names)}"
+        onmouseenter="showTooltip(event,this)"
+        onmouseleave="hideTooltip()"
+        ontouchstart="showTooltip(event,this)"
+      >
+        <span class="tl-block-label">${esc(p.artist)}</span>
+        <span class="tl-block-names">${picks.length > 1 || block.width > 8 ? esc(names) : ""}</span>
+      </div>`;
+    }).join("");
+
+    return `
+      <div class="tl-row">
+        <div class="tl-stage-label" style="color:${st.bg};text-shadow:0 0 8px ${st.bg}44">
+          ${esc(stage)}
+        </div>
+        <div class="tl-row-track">${blocksHTML}</div>
+      </div>`;
+  }).join("");
+
+  // Legend
+  const legendHTML = `
+    <div class="tl-legend">
+      ${stagesWithPicks.map(s => {
+        const st = STAGE_STYLE[s] || STAGE_STYLE["Other"];
+        return `<div class="tl-legend-item">
+          <div class="tl-legend-dot" style="background:${st.bg}"></div>
+          ${esc(s)}
+        </div>`;
+      }).join("")}
+    </div>`;
+
+  // Night style for midnight marker label
+  const ds = DAY_STYLE[activeTimelineNight] || { fg: "#B39DDB" };
+  const midnightPct = minToPct(24 * 60);
+
+  container.innerHTML = `
+    <div class="tl-wrap">
+      <div class="tl-grid">
+        <div class="tl-gridlines">${gridHTML}
+          <div style="position:absolute;top:-18px;left:calc(${midnightPct}% - 1px);
+            font-family:var(--font-display);font-size:0.5rem;color:${ds.fg};
+            letter-spacing:0.1em;white-space:nowrap;transform:translateX(-50%)">
+            ── MIDNIGHT ──
+          </div>
+        </div>
+        <div style="margin-left:130px">${axisHTML}</div>
+        ${rowsHTML}
+      </div>
+    </div>
+    ${legendHTML}`;
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────
+function showTooltip(e, el) {
+  const tip = document.getElementById("tl-tooltip");
+  tip.innerHTML = `
+    <div class="tl-tooltip-artist">${el.dataset.artist}</div>
+    <div class="tl-tooltip-row"><span>Stage</span>${el.dataset.stage}</div>
+    <div class="tl-tooltip-row"><span>Time</span>${el.dataset.start} → ${el.dataset.end}</div>
+    <div class="tl-tooltip-row"><span>Going</span>${el.dataset.names}</div>`;
+  tip.classList.remove("hidden");
+  positionTooltip(e);
+}
+
+function hideTooltip() {
+  document.getElementById("tl-tooltip").classList.add("hidden");
+}
+
+function positionTooltip(e) {
+  const tip = document.getElementById("tl-tooltip");
+  const x   = (e.touches ? e.touches[0].clientX : e.clientX) + 14;
+  const y   = (e.touches ? e.touches[0].clientY : e.clientY) - 10;
+  const vw  = window.innerWidth;
+  const tw  = tip.offsetWidth || 240;
+  tip.style.left = (x + tw > vw ? x - tw - 28 : x) + "px";
+  tip.style.top  = y + "px";
+}
+
+document.addEventListener("mousemove", e => {
+  const tip = document.getElementById("tl-tooltip");
+  if (tip && !tip.classList.contains("hidden")) positionTooltip(e);
+});
 
 // ── TIME HELPERS ──────────────────────────────────────────────
 function parseTimeToMins(t) {
