@@ -107,39 +107,32 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   const hours   = [...new Set(TIME_SLOTS.map(s => String(s.h12)))];
   const minutes = [...new Set(TIME_SLOTS.map(s => String(s.min).padStart(2, "0")))];
   const periods = ["PM", "AM"];
-
-  const ITEM_H = 36;
+  const ITEM_H  = 36;
+  const REPEATS = 20; // repeat items many times so scroll feels infinite
 
   function populate(col, items) {
-    // Padding items top and bottom so selection can reach first/last
-    col.innerHTML =
-      `<div class="dial-item dial-pad"></div>
-       <div class="dial-item dial-pad"></div>` +
-      items.map(v => `<div class="dial-item" data-val="${v}">${v}</div>`).join("") +
-      `<div class="dial-item dial-pad"></div>
-       <div class="dial-item dial-pad"></div>`;
+    const repeated = Array(REPEATS).fill(items).flat();
+    col.innerHTML = repeated.map(v =>
+      `<div class="dial-item" data-val="${v}">${v}</div>`
+    ).join("");
   }
 
   populate(colH, hours);
   populate(colM, minutes);
   populate(colP, periods);
 
-  function getSelectedIdx(col) {
-    // Which real item is closest to center
-    return Math.round(col.scrollTop / ITEM_H);
-  }
-
   function getSelectedVal(col) {
-    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    const idx   = Math.min(Math.max(getSelectedIdx(col), 0), items.length - 1);
-    return items[idx] ? items[idx].dataset.val : items[0].dataset.val;
+    const idx   = Math.round(col.scrollTop / ITEM_H);
+    const items = [...col.querySelectorAll(".dial-item")];
+    const item  = items[Math.min(idx, items.length - 1)];
+    return item ? item.dataset.val : items[0].dataset.val;
   }
 
   function updateHighlights(col) {
-    const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    const selIdx = getSelectedIdx(col);
+    const idx   = Math.round(col.scrollTop / ITEM_H);
+    const items = [...col.querySelectorAll(".dial-item")];
     items.forEach((item, i) => {
-      item.classList.toggle("selected", i === selIdx);
+      item.classList.toggle("selected", i === idx);
     });
   }
 
@@ -155,40 +148,34 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
     updateHighlights(colP);
   }
 
-    function snapCol(col) {
-      const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-      const idx    = Math.max(0, Math.min(items.length - 1, Math.round(col.scrollTop / ITEM_H)));
-      col.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
-    }
+  function snapCol(col) {
+    const idx = Math.round(col.scrollTop / ITEM_H);
+    col.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
+  }
 
   [colH, colM, colP].forEach(col => {
-// One item per wheel tick — throttled
-let wheelLocked = false;
+    let wheelLocked = false;
     col.addEventListener("wheel", (e) => {
       e.preventDefault();
       if (wheelLocked) return;
       wheelLocked = true;
       const direction  = e.deltaY > 0 ? 1 : -1;
       const currentIdx = Math.round(col.scrollTop / ITEM_H);
-      const items      = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+      const items      = [...col.querySelectorAll(".dial-item")];
       const newIdx     = Math.max(0, Math.min(items.length - 1, currentIdx + direction));
       col.scrollTo({ top: newIdx * ITEM_H, behavior: "smooth" });
       setTimeout(syncHidden, 150);
       setTimeout(() => { wheelLocked = false; }, 200);
     }, { passive: false });
 
-    col.addEventListener("scroll", () => {
-      updateHighlights(col);
-    }, { passive: true });
-
     col.addEventListener("scrollend", () => {
       snapCol(col);
       syncHidden();
     });
 
-    // Fallback for browsers without scrollend
     let scrollTimer;
     col.addEventListener("scroll", () => {
+      updateHighlights(col);
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => {
         snapCol(col);
@@ -197,44 +184,42 @@ let wheelLocked = false;
     }, { passive: true });
   });
 
-  function scrollToVal(col, val) {
-    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    const idx   = items.findIndex(i => i.dataset.val === String(val));
-    if (idx >= 0) col.scrollTop = idx * ITEM_H;
+  function scrollToVal(col, val, list) {
+    const items = [...col.querySelectorAll(".dial-item")];
+    // Start in the middle of the repeated list
+    const midOffset = Math.floor(REPEATS / 2) * list.length;
+    const localIdx  = list.indexOf(String(val));
+    const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
+    col.scrollTop = targetIdx * ITEM_H;
   }
 
   const initSlot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
   setTimeout(() => {
-    scrollToVal(colH, String(initSlot.h12));
-    scrollToVal(colM, String(initSlot.min).padStart(2, "0"));
-    scrollToVal(colP, "PM");
+    scrollToVal(colH, String(initSlot.h12), hours);
+    scrollToVal(colM, String(initSlot.min).padStart(2, "0"), minutes);
+    scrollToVal(colP, "PM", periods);
     setTimeout(syncHidden, 80);
   }, 0);
 }
 
 function resetDial(colH, colM, colP, hiddenInput, isEnd) {
-  const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
-  const ITEM_H = 36;
-  function scrollToVal(col, val) {
-    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    const idx   = items.findIndex(i => i.dataset.val === String(val));
-    if (idx >= 0) col.scrollTop = idx * ITEM_H;
-  }
-  scrollToVal(colH, String(slot.h12));
-  scrollToVal(colM, String(slot.min).padStart(2, "0"));
-  scrollToVal(colP, "PM");
-  hiddenInput.value = isEnd ? "150" : "0";
-}
+  const hours   = [...new Set(TIME_SLOTS.map(s => String(s.h12)))];
+  const minutes = [...new Set(TIME_SLOTS.map(s => String(s.min).padStart(2, "0")))];
+  const periods = ["PM", "AM"];
+  const ITEM_H  = 36;
+  const REPEATS = 20;
 
-function resetDial(colH, colM, colP, hiddenInput, isEnd) {
-  const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
-  function scrollToItem(col, val) {
-    const item = [...col.querySelectorAll(".dial-item")].find(i => i.dataset.val === String(val));
-    if (item) col.scrollTop = item.offsetTop - col.clientHeight / 2 + item.offsetHeight / 2;
+  function scrollToVal(col, val, list) {
+    const midOffset = Math.floor(REPEATS / 2) * list.length;
+    const localIdx  = list.indexOf(String(val));
+    const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
+    col.scrollTop = targetIdx * ITEM_H;
   }
-  scrollToItem(colH, String(slot.h12));
-  scrollToItem(colM, String(slot.min).padStart(2, "0"));
-  scrollToItem(colP, slot.ap);
+
+  const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
+  scrollToVal(colH, String(slot.h12), hours);
+  scrollToVal(colM, String(slot.min).padStart(2, "0"), minutes);
+  scrollToVal(colP, "PM", periods);
   hiddenInput.value = isEnd ? "150" : "0";
 }
 
