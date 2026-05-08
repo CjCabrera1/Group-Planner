@@ -201,7 +201,7 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   setTimeout(() => {
     scrollToVal(colH, String(initSlot.h12));
     scrollToVal(colM, String(initSlot.min).padStart(2, "0"));
-    scrollToVal(colP, initSlot.ap);
+    scrollToVal(colP, "PM");
     setTimeout(syncHidden, 80);
   }, 0);
 }
@@ -216,7 +216,7 @@ function resetDial(colH, colM, colP, hiddenInput, isEnd) {
   }
   scrollToVal(colH, String(slot.h12));
   scrollToVal(colM, String(slot.min).padStart(2, "0"));
-  scrollToVal(colP, slot.ap);
+  scrollToVal(colP, "PM");
   hiddenInput.value = isEnd ? "150" : "0";
 }
 
