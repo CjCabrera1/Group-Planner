@@ -125,13 +125,11 @@ async function handleAddPick() {
   if (!stage)  return showError("add-error", "Please select a stage.");
   if (!day)    return showError("add-error", "Please select a night.");
   if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
-  if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
-
-  // Persist name for convenience
-// Normalize artist to title case
+ 
+ // Normalize artist to title case
   const artistNormalized = artist.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 
-  // Normalize time format e.g. "7p" → "7:00 PM", "1:05am" → "1:05 AM"
+  // Normalize time format e.g. "7p" → "7:00 PM"
   function normalizeTime(t) {
     if (!t) return "";
     const s = t.trim();
