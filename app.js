@@ -42,6 +42,24 @@ const DAY_ORDER = [
   "Night 2 (Sat May 16 - Sun May 17)",
   "Night 3 (Sun May 17 - Mon May 18)",
 ];
+// ── DIAL TIME HELPERS ────────────────────────────────────────
+// EDC window: 5:00 PM (index 0) → 5:25 AM (index 149), 5-min steps
+// index 150 on end dial = "None"
+const TIME_SLOTS = [];
+for (let i = 0; i <= 149; i++) {
+  const totalMins = 17 * 60 + i * 5;
+  const wrapped   = totalMins % (24 * 60);
+  const h24 = Math.floor(wrapped / 60);
+  const min = wrapped % 60;
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+  const ap  = h24 < 12 ? "AM" : "PM";
+  TIME_SLOTS.push({ h12, min, ap, label: `${h12}:${String(min).padStart(2, "0")} ${ap}` });
+}
+
+function sliderToTime(val) {
+  if (val >= 150 || val < 0) return "";
+  return TIME_SLOTS[val].label;
+}
 
 // ── INIT ─────────────────────────────────────────────────────
 let db;
@@ -82,25 +100,6 @@ function subscribeToPicksRealtime() {
         updateLiveBadge(false);
       }
     );
-}
-
-// ── DIAL TIME HELPERS ────────────────────────────────────────
-// EDC window: 5:00 PM (index 0) → 5:25 AM (index 149), 5-min steps
-// index 150 on end dial = "None"
-const TIME_SLOTS = [];
-for (let i = 0; i <= 149; i++) {
-  const totalMins = 17 * 60 + i * 5;
-  const wrapped   = totalMins % (24 * 60);
-  const h24 = Math.floor(wrapped / 60);
-  const min = wrapped % 60;
-  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-  const ap  = h24 < 12 ? "AM" : "PM";
-  TIME_SLOTS.push({ h12, min, ap, label: `${h12}:${String(min).padStart(2, "0")} ${ap}` });
-}
-
-function sliderToTime(val) {
-  if (val >= 150 || val < 0) return "";
-  return TIME_SLOTS[val].label;
 }
 
 // ── DIAL BUILDER ─────────────────────────────────────────────
