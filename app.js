@@ -456,7 +456,7 @@ function renderGroupPlan() {
   const crewHTML = crews.length === 0 ? "" : `
     <div class="crew-section">
       <div class="crew-header">
-        <span class="crew-title">🫂 Suggested Crews</span>
+        <span class="crew-title">🫂 Suggested Duo</span>
         <span class="crew-sub">Based on shared sets — stay together, rave together</span>
       </div>
       <div class="crew-grid">
