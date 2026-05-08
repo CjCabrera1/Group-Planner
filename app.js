@@ -7,12 +7,13 @@
 // Replace these values with your own Firebase project config.
 // Instructions: https://firebase.google.com/docs/web/setup
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  apiKey:            "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
+  authDomain:        "edc-planner-18de3.firebaseapp.com",
+  projectId:         "edc-planner-18de3",
+  storageBucket:     "edc-planner-18de3.firebasestorage.app",
+  messagingSenderId: "364050253720",
+  appId:             "1:364050253720:web:f03fbaa8afc412d68a4ded",
+  measurementId:     "G-HC79E255XM"
 };
 
 // ── STAGE STYLES ─────────────────────────────────────────────
