@@ -6,7 +6,7 @@
 // ── FIREBASE CONFIG ──────────────────────────────────────────
 // Replace these values with your own Firebase project config.
 // Instructions: https://firebase.google.com/docs/web/setup
-const firebaseConfig = {
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
   authDomain: "edc-planner-18de3.firebaseapp.com",
   projectId: "edc-planner-18de3",
