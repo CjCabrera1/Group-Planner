@@ -125,7 +125,7 @@ async function handleAddPick() {
   if (!stage)  return showError("add-error", "Please select a stage.");
   if (!day)    return showError("add-error", "Please select a night.");
   if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
-  if (!parseTimeToMins(start)) return showError("add-error", "Start time format not recognized. Try e.g. 11:15 PM or 1:05 AM.");
+  if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
 
   // Persist name for convenience
 // Normalize artist to title case
