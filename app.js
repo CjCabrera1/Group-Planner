@@ -5,7 +5,6 @@
 
 // ── FIREBASE CONFIG ──────────────────────────────────────────
 // Replace these values with your own Firebase project config.
-// Instructions: https://firebase.google.com/docs/web/setup
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
   authDomain: "edc-planner-18de3.firebaseapp.com",
@@ -48,9 +47,9 @@ const DAY_ORDER = [
   "Night 3 (Sun May 17 - Mon May 18)",
 ];
 
-// ── INIT ──────────────────────────────────────────────────────
+// ── INIT ─────────────────────────────────────────────────────
 let db;
-let allPicks = []; // local mirror of Firestore data
+let allPicks = [];
 
 try {
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -68,8 +67,7 @@ function initApp() {
   subscribeToPicksRealtime();
 }
 
-// ── REALTIME SUBSCRIPTION ─────────────────────────────────────
-// onSnapshot fires immediately with current data, then on every change.
+// ── REALTIME SUBSCRIPTION ────────────────────────────────────
 function subscribeToPicksRealtime() {
   db.collection("picks")
     .orderBy("createdAt", "asc")
@@ -88,7 +86,9 @@ function subscribeToPicksRealtime() {
     );
 }
 
-// ── FORM LOGIC ────────────────────────────────────────────────
+// ── SLIDER TIME HELPER ────────────────────────────────────────
+// Slider range: 0–149 = 5:00 PM → 5:25 AM (5-min steps)
+// Value 150 on end slider = "None"
 function sliderToTime(val) {
   const totalMins = 17 * 60 + val * 5;
   const wrapped   = totalMins % (24 * 60);
@@ -96,16 +96,18 @@ function sliderToTime(val) {
   const min = wrapped % 60;
   const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
   const ap  = h24 < 12 ? "AM" : "PM";
-  return `${h12}:${String(min).padStart(2,"0")} ${ap}`;
+  return `${h12}:${String(min).padStart(2, "0")} ${ap}`;
 }
+
+// ── FORM LOGIC ────────────────────────────────────────────────
 function setupForm() {
-  const btn = document.getElementById("btn-add-pick");
+  const btn      = document.getElementById("btn-add-pick");
   const clearBtn = document.getElementById("btn-clear-form");
 
   btn.addEventListener("click", handleAddPick);
   clearBtn.addEventListener("click", clearForm);
 
-  // Allow Enter key in text inputs
+  // Enter key on text inputs
   ["input-name", "input-artist"].forEach(id => {
     document.getElementById(id).addEventListener("keydown", (e) => {
       if (e.key === "Enter") handleAddPick();
@@ -118,16 +120,6 @@ function setupForm() {
   const startDisp   = document.getElementById("start-display");
   const endDisp     = document.getElementById("end-display");
 
-  function sliderToTime(val) {
-    const totalMins = 17 * 60 + val * 5;
-    const wrapped   = totalMins % (24 * 60);
-    const h24 = Math.floor(wrapped / 60);
-    const min = wrapped % 60;
-    const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-    const ap  = h24 < 12 ? "AM" : "PM";
-    return `${h12}:${String(min).padStart(2,"0")} ${ap}`;
-  }
-
   startSlider.addEventListener("input", () => {
     startDisp.textContent = sliderToTime(+startSlider.value);
   });
@@ -137,7 +129,7 @@ function setupForm() {
     endDisp.textContent = v === 150 ? "None" : sliderToTime(v);
   });
 
-  // Remember name across picks
+  // Remember name
   const savedName = localStorage.getItem("edc_planner_name");
   if (savedName) document.getElementById("input-name").value = savedName;
 }
@@ -150,6 +142,8 @@ async function handleAddPick() {
   const artist = val("input-artist").trim();
   const stage  = val("input-stage");
   const day    = val("input-day");
+
+  // Read slider values
   const startVal = +document.getElementById("input-start").value;
   const endVal   = +document.getElementById("input-end").value;
   const start    = sliderToTime(startVal);
@@ -160,29 +154,13 @@ async function handleAddPick() {
   if (!artist) return showError("add-error", "Please enter an artist name.");
   if (!stage)  return showError("add-error", "Please select a stage.");
   if (!day)    return showError("add-error", "Please select a night.");
-  if (!start)  return showError("add-error", "Please enter a start time (e.g. 11:15 PM).");
- 
- // Normalize artist to title case
-  const artistNormalized = artist.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 
-  // Normalize time format e.g. "7p" → "7:00 PM"
-  function normalizeTime(t) {
-    if (!t) return "";
-    const s = t.trim();
-    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|A|P)$/i);
-    if (!m) return s;
-    const h   = parseInt(m[1]);
-    const min = m[2] ? m[2].padStart(2, "0") : "00";
-    const raw = m[3].toUpperCase();
-    const period = raw === "A" ? "AM" : raw === "P" ? "PM" : raw;
-    return `${h}:${min} ${period}`;
-  }
-  const startNormalized = normalizeTime(start);
-  const endNormalized   = normalizeTime(end);
+  // Normalize artist to title case
+  const artistNormalized = artist.replace(/\w\S*/g, w =>
+    w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+  );
 
-  if (!parseTimeToMins(startNormalized)) return showError("add-error", "Start time format not recognized. Try e.g. 11:15 PM, 7pm, or 1:05 AM.");
-
-  // Persist name for convenience
+  // Persist name
   localStorage.setItem("edc_planner_name", name);
 
   // Save to Firestore
@@ -196,16 +174,19 @@ async function handleAddPick() {
       artist: artistNormalized,
       stage,
       day,
-      start: startNormalized,
-      end: endNormalized,
+      start,
+      end,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    showSuccess("add-success", `✅ ${artist} added! It's live for everyone.`);
 
-    // Clear artist/time fields but keep name + stage + day for easy multi-entry
+    showSuccess("add-success", `✅ ${artistNormalized} added! It's live for everyone.`);
+
+    // Reset artist field, keep name/stage/day for quick multi-entry
     document.getElementById("input-artist").value = "";
-    document.getElementById("input-start").value  = "";
-    document.getElementById("input-end").value    = "";
+    document.getElementById("input-start").value  = "0";
+    document.getElementById("input-end").value    = "150";
+    document.getElementById("start-display").textContent = sliderToTime(0);
+    document.getElementById("end-display").textContent   = "None";
     document.getElementById("input-artist").focus();
 
   } catch (e) {
@@ -226,15 +207,18 @@ async function deletePick(id) {
 }
 
 function clearForm() {
-  ["input-artist", "input-stage", "input-day", "input-start", "input-end"].forEach(id => {
-    const el = document.getElementById(id);
-    el.value = "";
-  });
+  document.getElementById("input-artist").value = "";
+  document.getElementById("input-stage").value  = "";
+  document.getElementById("input-day").value    = "";
+  document.getElementById("input-start").value  = "0";
+  document.getElementById("input-end").value    = "150";
+  document.getElementById("start-display").textContent = sliderToTime(0);
+  document.getElementById("end-display").textContent   = "None";
   hideMsg("add-error");
   hideMsg("add-success");
 }
 
-// ── RENDER: SIGN UP FEED ──────────────────────────────────────
+// ── RENDER: SIGN UP FEED ─────────────────────────────────────
 function renderSignupFeed() {
   const container = document.getElementById("all-picks-list");
   const countEl   = document.getElementById("total-count");
@@ -246,7 +230,6 @@ function renderSignupFeed() {
     return;
   }
 
-  // Group by person name (case-insensitive, preserve original casing)
   const byPerson = new Map();
   allPicks.forEach(pick => {
     const key = pick.name.toLowerCase();
@@ -256,7 +239,6 @@ function renderSignupFeed() {
 
   const currentName = localStorage.getItem("edc_planner_name") || "";
 
-  // Sort: current user first, then alphabetical
   const sorted = [...byPerson.values()].sort((a, b) => {
     const aMe = a.name.toLowerCase() === currentName.toLowerCase();
     const bMe = b.name.toLowerCase() === currentName.toLowerCase();
@@ -271,7 +253,7 @@ function renderSignupFeed() {
       const st = STAGE_STYLE[p.stage] || STAGE_STYLE["Other"];
       const endDisplay = p.end ? `→ ${p.end}` : "→ ~1 hr";
       return `
-        <div class="pick-card" style="border-left-color: ${st.border}">
+        <div class="pick-card" style="border-left-color:${st.border}">
           <div class="pick-main">
             <span class="pick-artist">${esc(p.artist)}</span>
             <div class="pick-meta">
@@ -295,7 +277,7 @@ function renderSignupFeed() {
   }).join("");
 }
 
-// ── RENDER: GROUP PLAN ────────────────────────────────────────
+// ── RENDER: GROUP PLAN ───────────────────────────────────────
 function renderGroupPlan() {
   const container = document.getElementById("group-plan-content");
 
@@ -312,15 +294,13 @@ function renderGroupPlan() {
       mergeMap.set(key, { ...p, names: [p.name] });
     } else {
       const entry = mergeMap.get(key);
-      if (!entry.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase())) {
+      if (!entry.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
         entry.names.push(p.name);
-      }
     }
   });
 
   const merged = [...mergeMap.values()];
 
-  // Sort by day order, then start time
   merged.sort((a, b) => {
     const dA = DAY_ORDER.indexOf(a.day);
     const dB = DAY_ORDER.indexOf(b.day);
@@ -328,7 +308,6 @@ function renderGroupPlan() {
     return (parseTimeToMins(a.start) || 9999) - (parseTimeToMins(b.start) || 9999);
   });
 
-  // Group by day
   const byDay = new Map();
   merged.forEach(entry => {
     const d = entry.day || "Unknown";
@@ -336,8 +315,7 @@ function renderGroupPlan() {
     byDay.get(d).push(entry);
   });
 
-  // Build conflict lookup: for each person, their picks indexed by day
-  const personDayPicks = new Map(); // "name|||day" → picks[]
+  const personDayPicks = new Map();
   allPicks.forEach(p => {
     const key = `${p.name.toLowerCase()}|||${p.day}`;
     if (!personDayPicks.has(key)) personDayPicks.set(key, []);
@@ -351,15 +329,13 @@ function renderGroupPlan() {
       const otherPicks = personDayPicks.get(key) || [];
       otherPicks.forEach(other => {
         if (other.artist.toLowerCase() === entry.artist.toLowerCase() && other.start === entry.start) return;
-        if (timesOverlap(entry.start, entry.end, other.start, other.end)) {
+        if (timesOverlap(entry.start, entry.end, other.start, other.end))
           conflicts.push({ name, other });
-        }
       });
     });
     return conflicts;
   }
 
-  // Build HTML
   let html = "";
   DAY_ORDER.forEach(day => {
     if (!byDay.has(day)) return;
@@ -393,7 +369,8 @@ function renderGroupPlan() {
         .join(" ");
 
       const conflictText = hasConflict
-        ? [...new Set(conflicts.map(c => `⚠️ ${esc(c.name)} → ${esc(c.other.artist)} @ ${esc(c.other.start)}`))]
+        ? [...new Set(conflicts.map(c =>
+            `⚠️ ${esc(c.name)} → ${esc(c.other.artist)} @ ${esc(c.other.start)}`))]
             .join("<br>")
         : `<span class="conflict-ok">✅ Clear</span>`;
 
@@ -415,12 +392,10 @@ function renderGroupPlan() {
     html += `</div></div>`;
   });
 
-  // ── CREW BUBBLES ──────────────────────────────────────────
-  // Build a shared-set count for every pair of people
+  // ── CREW BUBBLES ─────────────────────────────────────────
   const people = [...new Set(allPicks.map(p => p.name))];
-  const pairCounts = new Map(); // "A|||B" → count
+  const pairCounts = new Map();
 
-  // For each merged entry, count pairs among who's going
   const allMergedForCrew = [...mergeMap.values()];
   allMergedForCrew.forEach(entry => {
     const names = entry.names;
@@ -432,22 +407,14 @@ function renderGroupPlan() {
     }
   });
 
-  // Build crew groups using simple greedy clustering:
-  // Start with the pair with most shared sets, keep adding people
-  // who share at least 1 set with someone already in the group
-  const MIN_SHARED = 1;
-  const visited = new Set();
   const crews = [];
-
-  // Sort pairs by shared count descending
   const sortedPairs = [...pairCounts.entries()]
-    .filter(([, count]) => count >= MIN_SHARED)
+    .filter(([, count]) => count >= 1)
     .sort((a, b) => b[1] - a[1]);
 
   sortedPairs.forEach(([key]) => {
     const [a, b] = key.split("|||");
-    // Find if either person is already in a crew
-    let existingCrew = crews.find(c => c.members.includes(a) || c.members.includes(b));
+    const existingCrew = crews.find(c => c.members.includes(a) || c.members.includes(b));
     if (existingCrew) {
       if (!existingCrew.members.includes(a)) existingCrew.members.push(a);
       if (!existingCrew.members.includes(b)) existingCrew.members.push(b);
@@ -456,14 +423,11 @@ function renderGroupPlan() {
     }
   });
 
-  // Add solo people who didn't share any sets
   people.forEach(p => {
-    if (!crews.some(c => c.members.includes(p))) {
+    if (!crews.some(c => c.members.includes(p)))
       crews.push({ members: [p] });
-    }
   });
 
-  // Score each crew by total shared sets among all pairs in it
   crews.forEach(crew => {
     let totalShared = 0;
     for (let i = 0; i < crew.members.length; i++) {
@@ -475,7 +439,6 @@ function renderGroupPlan() {
     crew.score = totalShared;
   });
 
-  // Build crew bubbles HTML
   const CREW_COLORS = [
     { bg: "#7B2FFF", fg: "#FFFFFF", light: "#2A0060" },
     { bg: "#00C896", fg: "#000000", light: "#003322" },
@@ -490,12 +453,20 @@ function renderGroupPlan() {
   const crewHTML = crews.length === 0 ? "" : `
     <div class="crew-section">
       <div class="crew-header">
-        <span class="crew-title">🫂 FIVE-STACK</span>
+        <span class="crew-title">🫂 Suggested Crews</span>
         <span class="crew-sub">Based on shared sets — stay together, rave together</span>
       </div>
       <div class="crew-grid">
         ${crews.map((crew, ci) => {
           const col = CREW_COLORS[ci % CREW_COLORS.length];
+          const isSolo = crew.members.length === 1;
+          const label = isSolo ? "🎧 Solo"
+            : crew.members.length === 2 ? "Duo"
+            : crew.members.length === 3 ? "Trio"
+            : crew.members.length === 4 ? "4-Stack"
+            : crew.members.length === 5 ? "5-Stack"
+            : `${crew.members.length}-Stack`;
+
           const pairs = [];
           for (let i = 0; i < crew.members.length; i++) {
             for (let j = i + 1; j < crew.members.length; j++) {
@@ -504,11 +475,11 @@ function renderGroupPlan() {
               if (count > 0) pairs.push(`${crew.members[i]} & ${crew.members[j]}: ${count} shared`);
             }
           }
-          const isSolo = crew.members.length === 1;
+
           return `
             <div class="crew-bubble" style="background:${col.light};border-color:${col.bg}">
               <div class="crew-label" style="color:${col.bg}">
-                ${isSolo ? "🎧 Solo" : `5-Stack ${ci + 1}`}
+                ${label}
                 ${crew.score > 0 ? `<span class="crew-score">${crew.score} shared set${crew.score !== 1 ? "s" : ""}</span>` : ""}
               </div>
               <div class="crew-members">
@@ -523,11 +494,10 @@ function renderGroupPlan() {
   container.innerHTML = crewHTML + html;
 }
 
-// ── TIMELINE ──────────────────────────────────────────────────
-// EDC runs 5PM–5:30AM. We display 5PM(17:00) → 5:30AM(29:30) = 12.5 hrs
-const TL_START_MIN = 17 * 60;       // 5:00 PM
-const TL_END_MIN   = 29 * 60 + 30;  // 5:30 AM next day (29.5 hrs mark)
-const TL_TOTAL_MIN = TL_END_MIN - TL_START_MIN; // 750 mins
+// ── TIMELINE ─────────────────────────────────────────────────
+const TL_START_MIN = 17 * 60;
+const TL_END_MIN   = 29 * 60 + 30;
+const TL_TOTAL_MIN = TL_END_MIN - TL_START_MIN;
 
 let activeTimelineNight = "Night 1 (Fri May 15 - Sat May 16)";
 
@@ -551,7 +521,6 @@ function renderTimeline() {
     return;
   }
 
-  // Filter picks for the active night
   const nightPicks = allPicks.filter(p => p.day === activeTimelineNight);
 
   if (nightPicks.length === 0) {
@@ -559,21 +528,18 @@ function renderTimeline() {
     return;
   }
 
-  // Group by stage
   const byStage = new Map();
   nightPicks.forEach(p => {
     if (!byStage.has(p.stage)) byStage.set(p.stage, []);
     byStage.get(p.stage).push(p);
   });
 
-  // Also show all known stages that have at least one pick
   const stagesWithPicks = [...byStage.keys()].sort((a, b) => {
     const order = Object.keys(STAGE_STYLE);
     return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) -
            (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
   });
 
-  // Merge same artist picks (dedupe names)
   function getMergedPicks(picks) {
     const map = new Map();
     picks.forEach(p => {
@@ -588,7 +554,6 @@ function renderTimeline() {
     return [...map.values()];
   }
 
-  // pct position helpers
   function minToPct(mins) {
     return ((mins - TL_START_MIN) / TL_TOTAL_MIN) * 100;
   }
@@ -598,16 +563,14 @@ function renderTimeline() {
     if (startM === null) return null;
     let endM = p.end ? parseTimeToMins(p.end) : startM + 60;
     if (!endM) endM = startM + 60;
-    // clamp to window
     startM = Math.max(startM, TL_START_MIN);
-    endM   = Math.min(endM,   TL_END_MIN);
+    endM   = Math.min(endM, TL_END_MIN);
     if (startM >= endM) return null;
     const left  = minToPct(startM);
     const width = minToPct(endM) - left;
     return { left, width };
   }
 
-  // Build time axis labels (every hour)
   const axisLabels = [];
   for (let m = TL_START_MIN; m <= TL_END_MIN; m += 60) {
     const pct  = minToPct(m);
@@ -616,27 +579,24 @@ function renderTimeline() {
     const min  = hour % 60;
     const h12  = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
     const ampm = h24 < 12 ? "AM" : "PM";
-    const label = `${h12}${min > 0 ? ":" + String(min).padStart(2,"0") : ""}${ampm}`;
+    const label = `${h12}${min > 0 ? ":" + String(min).padStart(2, "0") : ""}${ampm}`;
     const isMidnight = h24 === 0 && min === 0;
     axisLabels.push({ pct, label, isMidnight });
   }
 
-  // Build gridlines HTML
   const gridHTML = axisLabels.map(a =>
     `<div class="tl-gridline${a.isMidnight ? " midnight" : ""}" style="left:${a.pct}%"></div>`
   ).join("");
 
-  // Build axis HTML
   const axisHTML = `<div style="position:relative;height:18px;">` +
     axisLabels.map(a =>
       `<span class="tl-axis-label" style="left:${a.pct}%">${a.label}</span>`
     ).join("") +
   `</div>`;
 
-  // Build stage rows
   const rowsHTML = stagesWithPicks.map(stage => {
-    const st      = STAGE_STYLE[stage] || STAGE_STYLE["Other"];
-    const picks   = getMergedPicks(byStage.get(stage) || []);
+    const st    = STAGE_STYLE[stage] || STAGE_STYLE["Other"];
+    const picks = getMergedPicks(byStage.get(stage) || []);
 
     const blocksHTML = picks.map(p => {
       const block = pickToBlock(p);
@@ -655,7 +615,7 @@ function renderTimeline() {
         ontouchstart="showTooltip(event,this)"
       >
         <span class="tl-block-label">${esc(p.artist)}</span>
-        <span class="tl-block-names">${picks.length > 1 || block.width > 8 ? esc(names) : ""}</span>
+        <span class="tl-block-names">${block.width > 8 ? esc(names) : ""}</span>
       </div>`;
     }).join("");
 
@@ -668,7 +628,6 @@ function renderTimeline() {
       </div>`;
   }).join("");
 
-  // Legend
   const legendHTML = `
     <div class="tl-legend">
       ${stagesWithPicks.map(s => {
@@ -680,7 +639,6 @@ function renderTimeline() {
       }).join("")}
     </div>`;
 
-  // Night style for midnight marker label
   const ds = DAY_STYLE[activeTimelineNight] || { fg: "#B39DDB" };
   const midnightPct = minToPct(24 * 60);
 
@@ -701,7 +659,7 @@ function renderTimeline() {
     ${legendHTML}`;
 }
 
-// ── TOOLTIP ───────────────────────────────────────────────────
+// ── TOOLTIP ──────────────────────────────────────────────────
 function showTooltip(e, el) {
   const tip = document.getElementById("tl-tooltip");
   tip.innerHTML = `
@@ -732,7 +690,7 @@ document.addEventListener("mousemove", e => {
   if (tip && !tip.classList.contains("hidden")) positionTooltip(e);
 });
 
-// ── TIME HELPERS ──────────────────────────────────────────────
+// ── TIME HELPERS ─────────────────────────────────────────────
 function parseTimeToMins(t) {
   if (!t) return null;
   const m = String(t).match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
@@ -742,7 +700,6 @@ function parseTimeToMins(t) {
   const period = m[3].toUpperCase();
   if (period === "PM" && h !== 12) h += 12;
   if (period === "AM" && h === 12) h = 0;
-  // EDC runs past midnight — treat 12AM–5:59AM as 24–29:59 for sort continuity
   if (period === "AM" && h < 6) h += 24;
   return h * 60 + min;
 }
@@ -757,7 +714,7 @@ function timesOverlap(aStart, aEnd, bStart, bEnd) {
   return aS < bE && bS < aE;
 }
 
-// ── TAB SWITCHING ─────────────────────────────────────────────
+// ── TAB SWITCHING ────────────────────────────────────────────
 function setupTabs() {
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -770,7 +727,7 @@ function setupTabs() {
   });
 }
 
-// ── LIVE BADGE ────────────────────────────────────────────────
+// ── LIVE BADGE ───────────────────────────────────────────────
 function updateLiveBadge(connected) {
   const badge = document.getElementById("live-badge");
   if (connected) {
@@ -784,13 +741,11 @@ function updateLiveBadge(connected) {
   }
 }
 
-// ── STARFIELD ─────────────────────────────────────────────────
+// ── STARFIELD ────────────────────────────────────────────────
 function setupStarfield() {
   const canvas = document.getElementById("starfield");
   const ctx    = canvas.getContext("2d");
-
-  let stars = [];
-  const NUM_STARS = 180;
+  let stars    = [];
 
   function resize() {
     canvas.width  = window.innerWidth;
@@ -798,18 +753,18 @@ function setupStarfield() {
   }
 
   function initStars() {
-    stars = Array.from({ length: NUM_STARS }, () => ({
-      x:     Math.random() * canvas.width,
-      y:     Math.random() * canvas.height,
-      r:     Math.random() * 1.5 + 0.3,
-      speed: Math.random() * 0.3 + 0.05,
+    stars = Array.from({ length: 180 }, () => ({
+      x:       Math.random() * canvas.width,
+      y:       Math.random() * canvas.height,
+      r:       Math.random() * 1.5 + 0.3,
+      speed:   Math.random() * 0.3 + 0.05,
       opacity: Math.random(),
       pulse:   Math.random() * Math.PI * 2,
       color:   ["#FFFFFF", "#B39DDB", "#7B2FFF", "#00B4FF", "#FF2D78"][Math.floor(Math.random() * 5)],
     }));
   }
 
-  function drawStars(t) {
+  function drawStars() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     stars.forEach(s => {
       s.pulse += 0.015;
@@ -818,24 +773,19 @@ function setupStarfield() {
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fillStyle = s.color + Math.floor(alpha * 255).toString(16).padStart(2, "0");
       ctx.fill();
-
-      // Drift slowly upward
       s.y -= s.speed;
-      if (s.y < -2) {
-        s.y = canvas.height + 2;
-        s.x = Math.random() * canvas.width;
-      }
+      if (s.y < -2) { s.y = canvas.height + 2; s.x = Math.random() * canvas.width; }
     });
     requestAnimationFrame(drawStars);
   }
 
   resize();
   initStars();
-  drawStars(0);
+  drawStars();
   window.addEventListener("resize", () => { resize(); initStars(); });
 }
 
-// ── FIREBASE ERROR SCREEN ─────────────────────────────────────
+// ── FIREBASE ERROR SCREEN ────────────────────────────────────
 function showFirebaseError(e) {
   document.body.innerHTML = `
     <div style="font-family:monospace;max-width:600px;margin:80px auto;padding:32px;
@@ -847,8 +797,8 @@ function showFirebaseError(e) {
     </div>`;
 }
 
-// ── UTILS ─────────────────────────────────────────────────────
-function val(id)  { return document.getElementById(id).value; }
+// ── UTILS ────────────────────────────────────────────────────
+function val(id) { return document.getElementById(id).value; }
 function esc(str) {
   return String(str)
     .replace(/&/g, "&amp;")
