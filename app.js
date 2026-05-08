@@ -131,11 +131,17 @@ async function handleAddPick() {
   // Normalize artist to title case
   const artistNormalized = artist.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
  // Normalize time format e.g. "1:05am" → "1:05 AM"
-  function normalizeTime(t) {
+function normalizeTime(t) {
     if (!t) return "";
-    const m = t.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (!m) return t.trim();
-    return `${parseInt(m[1])}:${m[2].padStart(2,"0")} ${m[3].toUpperCase()}`;
+    const s = t.trim();
+    // Match formats: 7PM, 7pm, 7p, 7P, 7:00PM, 7:00 PM, 11:15pm, 1:05 AM etc.
+    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|A|P)$/i);
+    if (!m) return s;
+    const h   = parseInt(m[1]);
+    const min = m[2] ? m[2].padStart(2, "0") : "00";
+    const raw = m[3].toUpperCase();
+    const period = raw === "A" ? "AM" : raw === "P" ? "PM" : raw;
+    return `${h}:${min} ${period}`;
   }
   const startNormalized = normalizeTime(start);
   const endNormalized   = normalizeTime(end);
