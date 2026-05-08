@@ -163,15 +163,15 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
 
   [colH, colM, colP].forEach(col => {
 // One item per wheel tick — throttled
-    let wheelLocked = false;
+let wheelLocked = false;
     col.addEventListener("wheel", (e) => {
       e.preventDefault();
       if (wheelLocked) return;
       wheelLocked = true;
-      const direction = e.deltaY > 0 ? 1 : -1;
+      const direction  = e.deltaY > 0 ? 1 : -1;
       const currentIdx = Math.round(col.scrollTop / ITEM_H);
-      const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-      const newIdx = Math.max(0, Math.min(items.length - 1, currentIdx + direction));
+      const items      = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+      const newIdx     = Math.max(0, Math.min(items.length - 1, currentIdx + direction));
       col.scrollTo({ top: newIdx * ITEM_H, behavior: "smooth" });
       setTimeout(syncHidden, 150);
       setTimeout(() => { wheelLocked = false; }, 200);
