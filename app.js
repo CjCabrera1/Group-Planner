@@ -2,7 +2,15 @@
 //  EDC LV 2026 — Group Planner
 //  Real-time via Firebase Firestore
 // ============================================================
-
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
+  authDomain:        "edc-planner-18de3.firebaseapp.com",
+  projectId:         "edc-planner-18de3",
+  storageBucket:     "edc-planner-18de3.firebasestorage.app",
+  messagingSenderId: "364050253720",
+  appId:             "1:364050253720:web:f03fbaa8afc412d68a4ded",
+  measurementId:     "G-HC79E255XM"
+};
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
