@@ -161,6 +161,16 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   }
 
   [colH, colM, colP].forEach(col => {
+    // One item per wheel tick
+    col.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const direction = e.deltaY > 0 ? 1 : -1;
+      const currentIdx = Math.round(col.scrollTop / ITEM_H);
+      const newIdx = Math.max(0, currentIdx + direction);
+      col.scrollTo({ top: newIdx * ITEM_H, behavior: "smooth" });
+      setTimeout(syncHidden, 150);
+    }, { passive: false });
+
     col.addEventListener("scroll", () => {
       updateHighlights(col);
     }, { passive: true });
