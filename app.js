@@ -19,7 +19,7 @@ const FIREBASE_CONFIG = {
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
-  "Med Tent Meetup":   { bg: "#ff0000", fg: "#FFFFFF", border: "#FF6FA8" },
+  "Med Tent Meetup":   { bg: "#FF0000", fg: "#FFFFFF", border: "#FF6FA8" },
   "Kinetic Field":     { bg: "#7B2FFF", fg: "#FFFFFF", border: "#9B5FFF" },
   "Cosmic Meadow":     { bg: "#00C896", fg: "#000000", border: "#00FFB8" },
   "Neon Garden":       { bg: "#FF2D78", fg: "#FFFFFF", border: "#FF6FA8" },
@@ -128,23 +128,6 @@ async function handleAddPick() {
   if (!parseTimeToMins(start)) return showError("add-error", "Start time format not recognized. Try e.g. 11:15 PM or 1:05 AM.");
 
   // Persist name for convenience
-  // Normalize artist to title case
-  const artistNormalized = artist.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
- // Normalize time format e.g. "1:05am" → "1:05 AM"
-function normalizeTime(t) {
-    if (!t) return "";
-    const s = t.trim();
-    // Match formats: 7PM, 7pm, 7p, 7P, 7:00PM, 7:00 PM, 11:15pm, 1:05 AM etc.
-    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|A|P)$/i);
-    if (!m) return s;
-    const h   = parseInt(m[1]);
-    const min = m[2] ? m[2].padStart(2, "0") : "00";
-    const raw = m[3].toUpperCase();
-    const period = raw === "A" ? "AM" : raw === "P" ? "PM" : raw;
-    return `${h}:${min} ${period}`;
-  }
-  const startNormalized = normalizeTime(start);
-  const endNormalized   = normalizeTime(end);
   localStorage.setItem("edc_planner_name", name);
 
   // Save to Firestore
@@ -155,11 +138,11 @@ function normalizeTime(t) {
   try {
     await db.collection("picks").add({
       name,
-      artist: artistNormalized,
+      artist,
       stage,
       day,
-      start: startNormalized,
-      end: endNormalized,
+      start,
+      end: end || "",
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -378,7 +361,112 @@ function renderGroupPlan() {
     html += `</div></div>`;
   });
 
-  container.innerHTML = html;
+  // ── CREW BUBBLES ──────────────────────────────────────────
+  // Build a shared-set count for every pair of people
+  const people = [...new Set(allPicks.map(p => p.name))];
+  const pairCounts = new Map(); // "A|||B" → count
+
+  // For each merged entry, count pairs among who's going
+  const allMergedForCrew = [...mergeMap.values()];
+  allMergedForCrew.forEach(entry => {
+    const names = entry.names;
+    for (let i = 0; i < names.length; i++) {
+      for (let j = i + 1; j < names.length; j++) {
+        const key = [names[i], names[j]].sort().join("|||");
+        pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      }
+    }
+  });
+
+  // Build crew groups using simple greedy clustering:
+  // Start with the pair with most shared sets, keep adding people
+  // who share at least 1 set with someone already in the group
+  const MIN_SHARED = 1;
+  const visited = new Set();
+  const crews = [];
+
+  // Sort pairs by shared count descending
+  const sortedPairs = [...pairCounts.entries()]
+    .filter(([, count]) => count >= MIN_SHARED)
+    .sort((a, b) => b[1] - a[1]);
+
+  sortedPairs.forEach(([key]) => {
+    const [a, b] = key.split("|||");
+    // Find if either person is already in a crew
+    let existingCrew = crews.find(c => c.members.includes(a) || c.members.includes(b));
+    if (existingCrew) {
+      if (!existingCrew.members.includes(a)) existingCrew.members.push(a);
+      if (!existingCrew.members.includes(b)) existingCrew.members.push(b);
+    } else {
+      crews.push({ members: [a, b] });
+    }
+  });
+
+  // Add solo people who didn't share any sets
+  people.forEach(p => {
+    if (!crews.some(c => c.members.includes(p))) {
+      crews.push({ members: [p] });
+    }
+  });
+
+  // Score each crew by total shared sets among all pairs in it
+  crews.forEach(crew => {
+    let totalShared = 0;
+    for (let i = 0; i < crew.members.length; i++) {
+      for (let j = i + 1; j < crew.members.length; j++) {
+        const key = [crew.members[i], crew.members[j]].sort().join("|||");
+        totalShared += pairCounts.get(key) || 0;
+      }
+    }
+    crew.score = totalShared;
+  });
+
+  // Build crew bubbles HTML
+  const CREW_COLORS = [
+    { bg: "#7B2FFF", fg: "#FFFFFF", light: "#2A0060" },
+    { bg: "#00C896", fg: "#000000", light: "#003322" },
+    { bg: "#FF2D78", fg: "#FFFFFF", light: "#3D0020" },
+    { bg: "#00B4FF", fg: "#000000", light: "#002B3D" },
+    { bg: "#FF6B00", fg: "#000000", light: "#3D1A00" },
+    { bg: "#E040FB", fg: "#FFFFFF", light: "#2B003D" },
+    { bg: "#76FF03", fg: "#000000", light: "#1A3300" },
+    { bg: "#FFD600", fg: "#000000", light: "#3D3300" },
+  ];
+
+  const crewHTML = crews.length === 0 ? "" : `
+    <div class="crew-section">
+      <div class="crew-header">
+        <span class="crew-title">🫂 Suggested Crews</span>
+        <span class="crew-sub">Based on shared sets — stay together, rave together</span>
+      </div>
+      <div class="crew-grid">
+        ${crews.map((crew, ci) => {
+          const col = CREW_COLORS[ci % CREW_COLORS.length];
+          const pairs = [];
+          for (let i = 0; i < crew.members.length; i++) {
+            for (let j = i + 1; j < crew.members.length; j++) {
+              const key = [crew.members[i], crew.members[j]].sort().join("|||");
+              const count = pairCounts.get(key) || 0;
+              if (count > 0) pairs.push(`${crew.members[i]} & ${crew.members[j]}: ${count} shared`);
+            }
+          }
+          const isSolo = crew.members.length === 1;
+          return `
+            <div class="crew-bubble" style="background:${col.light};border-color:${col.bg}">
+              <div class="crew-label" style="color:${col.bg}">
+                ${isSolo ? "🎧 Solo" : `Crew ${ci + 1}`}
+                ${crew.score > 0 ? `<span class="crew-score">${crew.score} shared set${crew.score !== 1 ? "s" : ""}</span>` : ""}
+              </div>
+              <div class="crew-members">
+                ${crew.members.map(m => `<span class="crew-chip" style="background:${col.bg};color:${col.fg}">${esc(m)}</span>`).join("")}
+              </div>
+              ${pairs.length > 0 ? `<div class="crew-pairs">${pairs.map(p => `<span>${esc(p)}</span>`).join("")}</div>` : ""}
+            </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  container.innerHTML = crewHTML + html;
 }
 
 // ── TIMELINE ──────────────────────────────────────────────────
