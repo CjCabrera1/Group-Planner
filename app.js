@@ -427,36 +427,19 @@ function renderGroupPlan() {
     }
   });
 
-  const crews = [];
-  const sortedPairs = [...pairCounts.entries()]
+  // Build duos only — every pair ranked by shared sets, no clustering
+  const crews = [...pairCounts.entries()]
     .filter(([, count]) => count >= 1)
-    .sort((a, b) => b[1] - a[1]);
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => {
+      const [a, b] = key.split("|||");
+      return { members: [a, b], score: count };
+    });
 
-  sortedPairs.forEach(([key]) => {
-    const [a, b] = key.split("|||");
-    const existingCrew = crews.find(c => c.members.includes(a) || c.members.includes(b));
-    if (existingCrew) {
-      if (!existingCrew.members.includes(a)) existingCrew.members.push(a);
-      if (!existingCrew.members.includes(b)) existingCrew.members.push(b);
-    } else {
-      crews.push({ members: [a, b] });
-    }
-  });
-
+  // Add solo for anyone not in any duo
   people.forEach(p => {
     if (!crews.some(c => c.members.includes(p)))
-      crews.push({ members: [p] });
-  });
-
-  crews.forEach(crew => {
-    let totalShared = 0;
-    for (let i = 0; i < crew.members.length; i++) {
-      for (let j = i + 1; j < crew.members.length; j++) {
-        const key = [crew.members[i], crew.members[j]].sort().join("|||");
-        totalShared += pairCounts.get(key) || 0;
-      }
-    }
-    crew.score = totalShared;
+      crews.push({ members: [p], score: 0 });
   });
 
   const CREW_COLORS = [
@@ -480,12 +463,7 @@ function renderGroupPlan() {
         ${crews.map((crew, ci) => {
           const col = CREW_COLORS[ci % CREW_COLORS.length];
           const isSolo = crew.members.length === 1;
-          const label = isSolo ? "🎧 Solo"
-            : crew.members.length === 2 ? "Duo"
-            : crew.members.length === 3 ? "Trio"
-            : crew.members.length === 4 ? "4-Stack"
-            : crew.members.length === 5 ? "5-Stack"
-            : `${crew.members.length}-Stack`;
+          const label = isSolo ? "🎧 Solo" : "🤝 Duo";
 
           const pairs = [];
           for (let i = 0; i < crew.members.length; i++) {
