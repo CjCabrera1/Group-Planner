@@ -454,7 +454,7 @@ function renderGroupPlan() {
           return `
             <div class="crew-bubble" style="background:${col.light};border-color:${col.bg}">
               <div class="crew-label" style="color:${col.bg}">
-                ${isSolo ? "🎧 Solo" : `Crew ${ci + 1}`}
+                ${isSolo ? "🎧 Solo" : `5-Stack ${ci + 1}`}
                 ${crew.score > 0 ? `<span class="crew-score">${crew.score} shared set${crew.score !== 1 ? "s" : ""}</span>` : ""}
               </div>
               <div class="crew-members">
