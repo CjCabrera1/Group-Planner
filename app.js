@@ -5,13 +5,13 @@
 
 // ── FIREBASE CONFIG ──────────────────────────────────────────
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
-  authDomain: "edc-planner-18de3.firebaseapp.com",
-  projectId: "edc-planner-18de3",
-  storageBucket: "edc-planner-18de3.firebasestorage.app",
-  messagingSenderId: "364050253720",
-  appId: "1:364050253720:web:f03fbaa8afc412d68a4ded",
-  measurementId: "G-HC79E255XM"
+  apiKey:            "%%FIREBASE_API_KEY%%",
+  authDomain:        "%%FIREBASE_AUTH_DOMAIN%%",
+  projectId:         "%%FIREBASE_PROJECT_ID%%",
+  storageBucket:     "%%FIREBASE_STORAGE_BUCKET%%",
+  messagingSenderId: "%%FIREBASE_MESSAGING_SENDER_ID%%",
+  appId:             "%%FIREBASE_APP_ID%%",
+  measurementId:     "%%FIREBASE_MEASUREMENT_ID%%",
 };
 
 // ── STAGE STYLES ─────────────────────────────────────────────
