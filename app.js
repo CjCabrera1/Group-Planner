@@ -286,16 +286,36 @@ function renderGroupPlan() {
     return;
   }
 
-  // Deduplicate: same artist+day+start → merge names
+  // Deduplicate: same artist+day, start times within 15 mins → merge into one row
+  const FUZZY_MINS = 15;
   const mergeMap = new Map();
+
   allPicks.forEach(p => {
-    const key = `${p.artist.toLowerCase()}|||${p.day}|||${p.start}`;
-    if (!mergeMap.has(key)) {
-      mergeMap.set(key, { ...p, names: [p.name] });
+    const artistDay = `${p.artist.toLowerCase()}|||${p.day}`;
+    const pMins = parseTimeToMins(p.start) || 0;
+
+    // Check if an existing entry for same artist+day is within fuzzy window
+    let matched = null;
+    for (const [key, entry] of mergeMap.entries()) {
+      if (!key.startsWith(artistDay)) continue;
+      const entryMins = parseTimeToMins(entry.start) || 0;
+      if (Math.abs(pMins - entryMins) <= FUZZY_MINS) {
+        matched = entry;
+        break;
+      }
+    }
+
+    if (matched) {
+      if (!matched.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
+        matched.names.push(p.name);
+      // Use the earlier start time and later end time for the merged row
+      const matchedMins = parseTimeToMins(matched.start) || 0;
+      if (pMins < matchedMins) matched.start = p.start;
+      if (p.end && (!matched.end || (parseTimeToMins(p.end) || 0) > (parseTimeToMins(matched.end) || 0)))
+        matched.end = p.end;
     } else {
-      const entry = mergeMap.get(key);
-      if (!entry.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
-        entry.names.push(p.name);
+      const key = `${artistDay}|||${p.start}`;
+      mergeMap.set(key, { ...p, names: [p.name] });
     }
   });
 
@@ -541,17 +561,25 @@ function renderTimeline() {
   });
 
   function getMergedPicks(picks) {
-    const map = new Map();
+    const FUZZY = 15;
+    const merged = [];
     picks.forEach(p => {
-      const key = `${p.artist.toLowerCase()}|||${p.start}`;
-      if (!map.has(key)) map.set(key, { ...p, names: [p.name] });
-      else {
-        const e = map.get(key);
-        if (!e.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
-          e.names.push(p.name);
+      const pMins = parseTimeToMins(p.start) || 0;
+      const existing = merged.find(e =>
+        e.artist.toLowerCase() === p.artist.toLowerCase() &&
+        Math.abs((parseTimeToMins(e.start) || 0) - pMins) <= FUZZY
+      );
+      if (existing) {
+        if (!existing.names.map(n => n.toLowerCase()).includes(p.name.toLowerCase()))
+          existing.names.push(p.name);
+        if (pMins < (parseTimeToMins(existing.start) || 0)) existing.start = p.start;
+        if (p.end && (!existing.end || (parseTimeToMins(p.end) || 0) > (parseTimeToMins(existing.end) || 0)))
+          existing.end = p.end;
+      } else {
+        merged.push({ ...p, names: [p.name] });
       }
     });
-    return [...map.values()];
+    return merged;
   }
 
   function minToPct(mins) {
