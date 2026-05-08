@@ -128,6 +128,24 @@ async function handleAddPick() {
   if (!parseTimeToMins(start)) return showError("add-error", "Start time format not recognized. Try e.g. 11:15 PM or 1:05 AM.");
 
   // Persist name for convenience
+  // Normalize artist to title case
+// Normalize artist to title case
+  const artistNormalized = artist.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+  // Normalize time format e.g. "7p" → "7:00 PM", "1:05am" → "1:05 AM"
+  function normalizeTime(t) {
+    if (!t) return "";
+    const s = t.trim();
+    const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|A|P)$/i);
+    if (!m) return s;
+    const h   = parseInt(m[1]);
+    const min = m[2] ? m[2].padStart(2, "0") : "00";
+    const raw = m[3].toUpperCase();
+    const period = raw === "A" ? "AM" : raw === "P" ? "PM" : raw;
+    return `${h}:${min} ${period}`;
+  }
+  const startNormalized = normalizeTime(start);
+  const endNormalized   = normalizeTime(end);
   localStorage.setItem("edc_planner_name", name);
 
   // Save to Firestore
@@ -138,14 +156,13 @@ async function handleAddPick() {
   try {
     await db.collection("picks").add({
       name,
-      artist,
+      artist: artistNormalized,
       stage,
       day,
-      start,
-      end: end || "",
+      start: startNormalized,
+      end: endNormalized,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-
     showSuccess("add-success", `✅ ${artist} added! It's live for everyone.`);
 
     // Clear artist/time fields but keep name + stage + day for easy multi-entry
