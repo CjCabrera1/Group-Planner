@@ -608,7 +608,6 @@ select option { background: #12003A; color: var(--text); }
   position: relative;
 }
 
-/* Center selection highlight */
 .dial-wrap::after {
   content: '';
   position: absolute;
@@ -668,12 +667,46 @@ select option { background: #12003A; color: var(--text); }
   opacity: 0;
 }
 
-/* Fade top and bottom */
-.dial-col::before,
-.dial-col::after {
-  content: '';
-  display: block;
-  height: 42px;
+.dial-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #08001A;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dial-col {
+  flex: 1;
+  height: 100%;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: pointer;
+}
+
+.dial-col::-webkit-scrollbar { display: none; }
+
+.dial-item {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  transition: color 0.1s;
+  user-select: none;
+}
+
+.dial-item.selected {
+  color: var(--gold);
+  text-shadow: 0 0 10px var(--gold);
 }
 
 .dial-none-wrap {
