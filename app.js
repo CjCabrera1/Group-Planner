@@ -2,6 +2,7 @@
 //  EDC LV 2026 — Group Planner
 //  Real-time via Firebase Firestore
 // ============================================================
+
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const FIREBASE_CONFIG = {
@@ -13,11 +14,6 @@ const FIREBASE_CONFIG = {
   appId:             "1:364050253720:web:f03fbaa8afc412d68a4ded",
   measurementId:     "G-HC79E255XM"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
   "Kinetic Field":     { bg: "#7B2FFF", fg: "#FFFFFF", border: "#9B5FFF" },
