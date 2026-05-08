@@ -19,6 +19,7 @@ const FIREBASE_CONFIG = {
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
+  "Med Tent Meetup":   { bg: "#ff0000", fg: "#FFFFFF", border: "#FF6FA8" },
   "Kinetic Field":     { bg: "#7B2FFF", fg: "#FFFFFF", border: "#9B5FFF" },
   "Cosmic Meadow":     { bg: "#00C896", fg: "#000000", border: "#00FFB8" },
   "Neon Garden":       { bg: "#FF2D78", fg: "#FFFFFF", border: "#FF6FA8" },
