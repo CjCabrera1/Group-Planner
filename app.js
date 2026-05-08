@@ -427,18 +427,25 @@ function renderGroupPlan() {
     }
   });
 
-  // Build duos only — every pair ranked by shared sets, no clustering
-  const crews = [...pairCounts.entries()]
+  // Build duos — each person can only appear in one duo (their best match)
+  const usedPeople = new Set();
+  const crews = [];
+
+  [...pairCounts.entries()]
     .filter(([, count]) => count >= 1)
     .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => {
+    .forEach(([key, count]) => {
       const [a, b] = key.split("|||");
-      return { members: [a, b], score: count };
+      if (!usedPeople.has(a) && !usedPeople.has(b)) {
+        crews.push({ members: [a, b], score: count });
+        usedPeople.add(a);
+        usedPeople.add(b);
+      }
     });
 
-  // Add solo for anyone not in any duo
+  // Anyone not matched into a duo goes solo
   people.forEach(p => {
-    if (!crews.some(c => c.members.includes(p)))
+    if (!usedPeople.has(p))
       crews.push({ members: [p], score: 0 });
   });
 
@@ -463,7 +470,7 @@ function renderGroupPlan() {
         ${crews.map((crew, ci) => {
           const col = CREW_COLORS[ci % CREW_COLORS.length];
           const isSolo = crew.members.length === 1;
-          const label = isSolo ? "🎧 Solo" : "🤝 Duo";
+          const label = isSolo ? "🎧 Side Quester" : "🤝 Duo";
 
           const pairs = [];
           for (let i = 0; i < crew.members.length; i++) {
