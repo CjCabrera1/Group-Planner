@@ -6,15 +6,19 @@
 // ── FIREBASE CONFIG ──────────────────────────────────────────
 // Replace these values with your own Firebase project config.
 // Instructions: https://firebase.google.com/docs/web/setup
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
-  authDomain:        "edc-planner-18de3.firebaseapp.com",
-  projectId:         "edc-planner-18de3",
-  storageBucket:     "edc-planner-18de3.firebasestorage.app",
+const firebaseConfig = {
+  apiKey: "AIzaSyCHrcKSvd2wcm7v6etxbtwl7JdlgyGiMzU",
+  authDomain: "edc-planner-18de3.firebaseapp.com",
+  projectId: "edc-planner-18de3",
+  storageBucket: "edc-planner-18de3.firebasestorage.app",
   messagingSenderId: "364050253720",
-  appId:             "1:364050253720:web:f03fbaa8afc412d68a4ded",
-  measurementId:     "G-HC79E255XM"
+  appId: "1:364050253720:web:f03fbaa8afc412d68a4ded",
+  measurementId: "G-HC79E255XM"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
