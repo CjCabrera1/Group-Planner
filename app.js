@@ -16,9 +16,6 @@ const firebaseConfig = {
   measurementId: "G-HC79E255XM"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 // ── STAGE STYLES ─────────────────────────────────────────────
 const STAGE_STYLE = {
