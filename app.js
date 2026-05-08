@@ -108,38 +108,38 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   const minutes = [...new Set(TIME_SLOTS.map(s => String(s.min).padStart(2, "0")))];
   const periods = ["PM", "AM"];
 
+  const ITEM_H = 36;
+
   function populate(col, items) {
-    col.innerHTML = items.map(v =>
-      `<div class="dial-item" data-val="${v}">${v}</div>`
-    ).join("");
+    // Padding items top and bottom so selection can reach first/last
+    col.innerHTML =
+      `<div class="dial-item dial-pad"></div>
+       <div class="dial-item dial-pad"></div>` +
+      items.map(v => `<div class="dial-item" data-val="${v}">${v}</div>`).join("") +
+      `<div class="dial-item dial-pad"></div>
+       <div class="dial-item dial-pad"></div>`;
   }
 
   populate(colH, hours);
   populate(colM, minutes);
   populate(colP, periods);
 
-  function getSelectedVal(col) {
-    const items  = [...col.querySelectorAll(".dial-item")];
-    const colTop = col.scrollTop;
-    const center = colTop + col.clientHeight / 2;
-    let closest = items[0];
-    let minDist = Infinity;
-    items.forEach(item => {
-      const dist = Math.abs(item.offsetTop + item.offsetHeight / 2 - center);
-      if (dist < minDist) { minDist = dist; closest = item; }
-    });
-    return closest ? closest.dataset.val : items[0].dataset.val;
+  function getSelectedIdx(col) {
+    // Which real item is closest to center
+    return Math.round(col.scrollTop / ITEM_H);
   }
 
-  function updateHighlights() {
-    [colH, colM, colP].forEach(col => {
-      const items  = [...col.querySelectorAll(".dial-item")];
-      const colTop = col.scrollTop;
-      const center = colTop + col.clientHeight / 2;
-      items.forEach(item => {
-        const dist = Math.abs(item.offsetTop + item.offsetHeight / 2 - center);
-        item.classList.toggle("selected", dist < 20);
-      });
+  function getSelectedVal(col) {
+    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+    const idx   = Math.min(Math.max(getSelectedIdx(col), 0), items.length - 1);
+    return items[idx] ? items[idx].dataset.val : items[0].dataset.val;
+  }
+
+  function updateHighlights(col) {
+    const items  = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+    const selIdx = getSelectedIdx(col);
+    items.forEach((item, i) => {
+      item.classList.toggle("selected", i === selIdx);
     });
   }
 
@@ -150,25 +150,64 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
     const label = `${h}:${m} ${ap}`;
     const idx = TIME_SLOTS.findIndex(s => s.label === label);
     hiddenInput.value = idx === -1 ? (isEnd ? "150" : "0") : String(idx);
-    updateHighlights();
+    updateHighlights(colH);
+    updateHighlights(colM);
+    updateHighlights(colP);
+  }
+
+  function snapCol(col) {
+    const idx = Math.round(col.scrollTop / ITEM_H);
+    col.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
   }
 
   [colH, colM, colP].forEach(col => {
-    col.addEventListener("scroll", syncHidden, { passive: true });
+    col.addEventListener("scroll", () => {
+      updateHighlights(col);
+    }, { passive: true });
+
+    col.addEventListener("scrollend", () => {
+      snapCol(col);
+      syncHidden();
+    });
+
+    // Fallback for browsers without scrollend
+    let scrollTimer;
+    col.addEventListener("scroll", () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        snapCol(col);
+        syncHidden();
+      }, 120);
+    }, { passive: true });
   });
 
-  function scrollToItem(col, val) {
-    const item = [...col.querySelectorAll(".dial-item")].find(i => i.dataset.val === String(val));
-    if (item) col.scrollTop = item.offsetTop - col.clientHeight / 2 + item.offsetHeight / 2;
+  function scrollToVal(col, val) {
+    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+    const idx   = items.findIndex(i => i.dataset.val === String(val));
+    if (idx >= 0) col.scrollTop = idx * ITEM_H;
   }
 
   const initSlot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
   setTimeout(() => {
-    scrollToItem(colH, String(initSlot.h12));
-    scrollToItem(colM, String(initSlot.min).padStart(2, "0"));
-    scrollToItem(colP, initSlot.ap);
-    setTimeout(syncHidden, 50);
+    scrollToVal(colH, String(initSlot.h12));
+    scrollToVal(colM, String(initSlot.min).padStart(2, "0"));
+    scrollToVal(colP, initSlot.ap);
+    setTimeout(syncHidden, 80);
   }, 0);
+}
+
+function resetDial(colH, colM, colP, hiddenInput, isEnd) {
+  const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
+  const ITEM_H = 36;
+  function scrollToVal(col, val) {
+    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+    const idx   = items.findIndex(i => i.dataset.val === String(val));
+    if (idx >= 0) col.scrollTop = idx * ITEM_H;
+  }
+  scrollToVal(colH, String(slot.h12));
+  scrollToVal(colM, String(slot.min).padStart(2, "0"));
+  scrollToVal(colP, slot.ap);
+  hiddenInput.value = isEnd ? "150" : "0";
 }
 
 function resetDial(colH, colM, colP, hiddenInput, isEnd) {
