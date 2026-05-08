@@ -89,6 +89,15 @@ function subscribeToPicksRealtime() {
 }
 
 // ── FORM LOGIC ────────────────────────────────────────────────
+function sliderToTime(val) {
+  const totalMins = 17 * 60 + val * 5;
+  const wrapped   = totalMins % (24 * 60);
+  const h24 = Math.floor(wrapped / 60);
+  const min = wrapped % 60;
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+  const ap  = h24 < 12 ? "AM" : "PM";
+  return `${h12}:${String(min).padStart(2,"0")} ${ap}`;
+}
 function setupForm() {
   const btn = document.getElementById("btn-add-pick");
   const clearBtn = document.getElementById("btn-clear-form");
@@ -97,10 +106,35 @@ function setupForm() {
   clearBtn.addEventListener("click", clearForm);
 
   // Allow Enter key in text inputs
-  ["input-name", "input-artist", "input-start", "input-end"].forEach(id => {
+  ["input-name", "input-artist"].forEach(id => {
     document.getElementById(id).addEventListener("keydown", (e) => {
       if (e.key === "Enter") handleAddPick();
     });
+  });
+
+  // Time sliders
+  const startSlider = document.getElementById("input-start");
+  const endSlider   = document.getElementById("input-end");
+  const startDisp   = document.getElementById("start-display");
+  const endDisp     = document.getElementById("end-display");
+
+  function sliderToTime(val) {
+    const totalMins = 17 * 60 + val * 5;
+    const wrapped   = totalMins % (24 * 60);
+    const h24 = Math.floor(wrapped / 60);
+    const min = wrapped % 60;
+    const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    const ap  = h24 < 12 ? "AM" : "PM";
+    return `${h12}:${String(min).padStart(2,"0")} ${ap}`;
+  }
+
+  startSlider.addEventListener("input", () => {
+    startDisp.textContent = sliderToTime(+startSlider.value);
+  });
+
+  endSlider.addEventListener("input", () => {
+    const v = +endSlider.value;
+    endDisp.textContent = v === 150 ? "None" : sliderToTime(v);
   });
 
   // Remember name across picks
@@ -116,8 +150,10 @@ async function handleAddPick() {
   const artist = val("input-artist").trim();
   const stage  = val("input-stage");
   const day    = val("input-day");
-  const start  = val("input-start").trim();
-  const end    = val("input-end").trim();
+  const startVal = +document.getElementById("input-start").value;
+  const endVal   = +document.getElementById("input-end").value;
+  const start    = sliderToTime(startVal);
+  const end      = endVal === 150 ? "" : sliderToTime(endVal);
 
   // Validation
   if (!name)   return showError("add-error", "Please enter your name.");

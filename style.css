@@ -67,7 +67,12 @@ header {
   padding: 24px 20px 16px;
   text-align: center;
 }
-
+.time-slider {
+  width: 100%;
+  accent-color: var(--purple);
+  cursor: pointer;
+  height: 6px;
+}
 .header-inner { max-width: 900px; margin: 0 auto; position: relative; }
 
 .logo-block {

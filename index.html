@@ -83,12 +83,12 @@
           </select>
         </div>
         <div class="field-group">
-          <label for="input-start">⏱ Start Time</label>
-          <input id="input-start" type="text" placeholder="e.g. 11:15 PM" autocomplete="off" />
+          <label for="input-start">⏱ Start Time — <span id="start-display" style="color:#FFD600">5:00 PM</span></label>
+          <input id="input-start" type="range" min="0" max="149" value="0" step="1" class="time-slider" />
         </div>
         <div class="field-group">
-          <label for="input-end">⏱ End Time <span class="optional">(optional)</span></label>
-          <input id="input-end" type="text" placeholder="blank = ~1 hr set" autocomplete="off" />
+          <label for="input-end">⏱ End Time <span class="optional">(optional)</span> — <span id="end-display" style="color:#7B2FFF">None</span></label>
+          <input id="input-end" type="range" min="0" max="150" value="150" step="1" class="time-slider" />
         </div>
       </div>
       <div class="form-actions">
