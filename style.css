@@ -658,8 +658,7 @@ select option { background: #12003A; color: var(--text); }
 }
 
 .dial-item.selected {
-  color: var(--gold);
-  text-shadow: 0 0 10px var(--gold);
+  color: var(--text);
 }
 
 .dial-item.dial-pad {
@@ -704,8 +703,7 @@ select option { background: #12003A; color: var(--text); }
 }
 
 .dial-item.selected {
-  color: var(--gold);
-  text-shadow: 0 0 10px var(--gold);
+  color: var(--text);
 }
 
 .dial-none-wrap {
