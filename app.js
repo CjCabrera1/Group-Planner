@@ -110,7 +110,7 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   const ITEM_H  = 36;
   const REPEATS = 20; // repeat items many times so scroll feels infinite
 
-  function populate(col, items) {
+function populate(col, items) {
     const repeated = Array(REPEATS).fill(items).flat();
     col.innerHTML = repeated.map(v =>
       `<div class="dial-item" data-val="${v}">${v}</div>`
@@ -121,16 +121,17 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
   populate(colM, minutes);
   populate(colP, periods);
 
-  function getSelectedVal(col) {
-    const idx   = Math.round(col.scrollTop / ITEM_H);
-    const items = [...col.querySelectorAll(".dial-item")];
-    const item  = items[Math.min(idx, items.length - 1)];
+function getSelectedVal(col) {
+    const scrolled = col.scrollTop;
+    const idx      = Math.round(scrolled / ITEM_H);
+    const items    = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
+    const item     = items[Math.min(idx, items.length - 1)];
     return item ? item.dataset.val : items[0].dataset.val;
   }
 
   function updateHighlights(col) {
     const idx   = Math.round(col.scrollTop / ITEM_H);
-    const items = [...col.querySelectorAll(".dial-item")];
+    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
     items.forEach((item, i) => {
       item.classList.toggle("selected", i === idx);
     });
@@ -184,13 +185,11 @@ function buildDial(colH, colM, colP, hiddenInput, isEnd) {
     }, { passive: true });
   });
 
-  function scrollToVal(col, val, list) {
-    const items = [...col.querySelectorAll(".dial-item")];
-    // Start in the middle of the repeated list
+function scrollToVal(col, val, list) {
     const midOffset = Math.floor(REPEATS / 2) * list.length;
     const localIdx  = list.indexOf(String(val));
     const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
-    col.scrollTop = targetIdx * ITEM_H;
+    col.scrollTop   = targetIdx * ITEM_H;
   }
 
   const initSlot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];

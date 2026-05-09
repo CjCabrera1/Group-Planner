@@ -638,6 +638,7 @@ select option { background: #12003A; color: var(--text); }
   scrollbar-width: none;
   -ms-overflow-style: none;
   cursor: pointer;
+  scroll-padding-top: 50%;
 }
 
 
@@ -652,9 +653,9 @@ select option { background: #12003A; color: var(--text); }
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-dim);
-  scroll-snap-align: center;
   transition: color 0.1s;
   user-select: none;
+  scroll-snap-align: center;
 }
 
 .dial-item.selected {
@@ -679,7 +680,6 @@ select option { background: #12003A; color: var(--text); }
   overflow: hidden;
   position: relative;
 }
-
 .dial-col {
   flex: 1;
   height: 100%;
