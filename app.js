@@ -122,7 +122,7 @@ function populate(col, items) {
   populate(colP, periods);
 
 function getCenterIdx(col) {
-    return Math.round(col.scrollTop / ITEM_H);
+    return Math.round(col.scrollTop / ITEM_H) + 2;
   }
 
   function getSelectedVal(col) {
@@ -213,7 +213,7 @@ function resetDial(colH, colM, colP, hiddenInput, isEnd) {
     const midOffset = Math.floor(REPEATS / 2) * list.length;
     const localIdx  = list.indexOf(String(val));
     const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
-    col.scrollTop = targetIdx * ITEM_H;
+    col.scrollTop = (targetIdx - 2) * ITEM_H;
   }
 
   const slot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
