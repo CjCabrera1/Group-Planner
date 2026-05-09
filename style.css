@@ -612,8 +612,7 @@ select option { background: #12003A; color: var(--text); }
   content: '';
   position: absolute;
   left: 0; right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 72px;
   height: 36px;
   background: #7B2FFF22;
   border-top: 1px solid #7B2FFF66;

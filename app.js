@@ -121,19 +121,20 @@ function populate(col, items) {
   populate(colM, minutes);
   populate(colP, periods);
 
-function getSelectedVal(col) {
-    const scrolled = col.scrollTop;
-    const idx      = Math.round(scrolled / ITEM_H);
-    const items    = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    const item     = items[Math.min(idx, items.length - 1)];
-    return item ? item.dataset.val : items[0].dataset.val;
+function getCenterIdx(col) {
+    return Math.round(col.scrollTop / ITEM_H);
+  }
+
+  function getSelectedVal(col) {
+    const items = [...col.querySelectorAll(".dial-item")];
+    const idx   = Math.min(getCenterIdx(col), items.length - 1);
+    return items[idx] ? items[idx].dataset.val : items[0].dataset.val;
   }
 
   function updateHighlights(col) {
-    const idx   = Math.round(col.scrollTop / ITEM_H);
-    const items = [...col.querySelectorAll(".dial-item:not(.dial-pad)")];
-    items.forEach((item, i) => {
-      item.classList.toggle("selected", i === idx);
+    const centerIdx = getCenterIdx(col);
+    [...col.querySelectorAll(".dial-item")].forEach((item, i) => {
+      item.classList.toggle("selected", i === centerIdx);
     });
   }
 
@@ -189,7 +190,7 @@ function scrollToVal(col, val, list) {
     const midOffset = Math.floor(REPEATS / 2) * list.length;
     const localIdx  = list.indexOf(String(val));
     const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
-    col.scrollTop   = targetIdx * ITEM_H;
+    col.scrollTop   = (targetIdx - 2) * ITEM_H;
   }
 
   const initSlot = isEnd ? TIME_SLOTS[Math.min(24, TIME_SLOTS.length - 1)] : TIME_SLOTS[0];
