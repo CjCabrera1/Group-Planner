@@ -298,22 +298,39 @@ async function handleAddPick() {
   localStorage.setItem("edc_planner_name", name);
 
   const btn = document.getElementById("btn-add-pick");
+  const editId = btn.dataset.editId;
+  
   btn.disabled = true;
-  btn.textContent = "Saving…";
+  btn.textContent = editId ? "Updating…" : "Saving…";
 
   try {
-    await db.collection("picks").add({
+    const data = {
       name,
       artist: artistNormalized,
       stage,
       day,
       start,
       end,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
+    };
 
-    showSuccess("add-success", `✅ ${artistNormalized} added! It's live for everyone.`);
+    if (editId) {
+      // Update existing pick
+      await db.collection("picks").doc(editId).update({
+        ...data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showSuccess("add-success", `✅ ${artistNormalized} updated!`);
+      delete btn.dataset.editId;
+    } else {
+      // Create new pick
+      await db.collection("picks").add({
+        ...data,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showSuccess("add-success", `✅ ${artistNormalized} added! It's live for everyone.`);
+    }
 
+    // Reset form
     document.getElementById("input-artist").value = "";
     resetDial(
       document.getElementById("dial-start-h"),
@@ -347,6 +364,7 @@ async function handleAddPick() {
     btn.textContent = "＋ Add Pick";
   }
 }
+
 
 async function deletePick(id) {
   try {
@@ -402,7 +420,33 @@ async function editPick(id) {
   
   // Switch to Sign Up tab if not already there
   document.querySelector('[data-tab="signup"]').click();
+}
+
+function setDialToIndex(type, index) {
+  const slot = TIME_SLOTS[index] || TIME_SLOTS[0];
+  const prefix = type === "start" ? "start" : "end";
   
+  const colH = document.getElementById(`dial-${prefix}-h`);
+  const colM = document.getElementById(`dial-${prefix}-m`);
+  const colP = document.getElementById(`dial-${prefix}-p`);
+  
+  const hours = [...new Set(TIME_SLOTS.map(s => String(s.h12)))];
+  const minutes = [...new Set(TIME_SLOTS.map(s => String(s.min).padStart(2, "0")))];
+  const ITEM_H = 36;
+  const REPEATS = 20;
+  
+  function scrollToVal(col, val, list) {
+    const midOffset = Math.floor(REPEATS / 2) * list.length;
+    const localIdx = list.indexOf(String(val));
+    const targetIdx = midOffset + (localIdx >= 0 ? localIdx : 0);
+    col.scrollTop = (targetIdx - 2) * ITEM_H;
+  }
+  
+  scrollToVal(colH, String(slot.h12), hours);
+  scrollToVal(colM, String(slot.min).padStart(2, "0"), minutes);
+  scrollToVal(colP, slot.ap, ["PM", "AM"]);
+}
+
 function clearForm() {
   document.getElementById("input-artist").value = "";
   document.getElementById("input-stage").value  = "";
@@ -431,7 +475,13 @@ function clearForm() {
   }
   hideMsg("add-error");
   hideMsg("add-success");
+  
+  // Reset edit mode
+  const btn = document.getElementById("btn-add-pick");
+  delete btn.dataset.editId;
+  btn.textContent = "＋ Add Pick";
 }
+
 
 // ── RENDER: SIGN UP FEED ─────────────────────────────────────
 function renderSignupFeed() {
@@ -469,16 +519,23 @@ function renderSignupFeed() {
       const endDisplay = p.end ? `→ ${p.end}` : "→ ~1 hr";
       return `
         <div class="pick-card" style="border-left-color:${st.border}">
-          <div class="pick-main">
-            <span class="pick-artist">${esc(p.artist)}</span>
-            <div class="pick-meta">
-              <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
-              <span class="pick-day">${esc(p.day)}</span>
-              <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
-            </div>
-          </div>
-          <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
-        </div>`;
+  <div class="pick-main">
+    <span class="pick-artist">${esc(p.artist)}</span>
+    <div class="pick-meta">
+      <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
+      <span class="pick-day">${esc(p.day)}</span>
+      <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
+    </div>
+  </div>
+  <div class="pick-actions">
+    <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
+    <div class="pick-actions">
+  <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
+  <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
+</div>
+  </div>
+</div>
+`;
     }).join("");
 
     return `
