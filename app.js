@@ -373,6 +373,68 @@ async function deletePick(id) {
     console.error("Delete failed:", e);
   }
 }
+function toggleEditMode(id, isEdit) {
+  const viewMode = document.getElementById(`view-${id}`);
+  const editMode = document.getElementById(`edit-${id}`);
+  
+  if (viewMode && editMode) {
+    viewMode.style.display = isEdit ? 'none' : 'flex';
+    editMode.style.display = isEdit ? 'block' : 'none';
+  }
+}
+
+async function saveEdit(id) {
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  const artist = document.getElementById(`edit-artist-${id}`).value.trim();
+  const stage = document.getElementById(`edit-stage-${id}`).value;
+  const day = document.getElementById(`edit-day-${id}`).value;
+  const startIdx = parseInt(document.getElementById(`edit-start-${id}`).value);
+  const endIdx = parseInt(document.getElementById(`edit-end-${id}`).value);
+  
+  if (!name || !artist || !stage || !day) {
+    alert("Please fill in all fields");
+    return;
+  }
+  
+  const start = sliderToTime(startIdx);
+  const end = endIdx >= 150 ? "" : sliderToTime(endIdx);
+  
+  const artistNormalized = artist.replace(/\w\S*/g, w =>
+    w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+  );
+  
+  try {
+    await db.collection("picks").doc(id).update({
+      name,
+      artist: artistNormalized,
+      stage,
+      day,
+      start,
+      end,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    
+    // Exit edit mode
+    toggleEditMode(id, false);
+  } catch (e) {
+    console.error("Update failed:", e);
+    alert("Failed to update. Please try again.");
+  }
+}
+
+async function confirmDelete(id) {
+  const pick = allPicks.find(p => p.id === id);
+  if (!pick) return;
+  
+  if (confirm(`Delete ${pick.artist}?`)) {
+    try {
+      await db.collection("picks").doc(id).delete();
+    } catch (e) {
+      console.error("Delete failed:", e);
+      alert("Failed to delete. Please try again.");
+    }
+  }
+}
 
 async function editPick(id) {
   const pick = allPicks.find(p => p.id === id);
@@ -517,22 +579,83 @@ function renderSignupFeed() {
     const pickCards = picks.map(p => {
       const st = STAGE_STYLE[p.stage] || STAGE_STYLE["Other"];
       const endDisplay = p.end ? `→ ${p.end}` : "→ ~1 hr";
-  return `
-    <div class="pick-card" style="border-left-color:${st.border}">
-      <div class="pick-main">
-        <span class="pick-artist">${esc(p.artist)}</span>
-        <div class="pick-meta">
-          <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
-          <span class="pick-day">${esc(p.day)}</span>
-          <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
-        </div>
-      </div>
-      <div class="pick-actions">
-        <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
-        <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
-      </div>
-    </div>
-  `;
+      
+      return `
+        <div class="pick-card" id="pick-${p.id}" style="border-left-color:${st.border}">
+          <!-- View Mode -->
+          <div class="pick-view" id="view-${p.id}">
+            <div class="pick-main">
+              <span class="pick-artist">${esc(p.artist)}</span>
+              <div class="pick-meta">
+                <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
+                <span class="pick-day">${esc(p.day)}</span>
+                <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
+              </div>
+            </div>
+            <div class="pick-actions">
+              <button class="btn-edit" onclick="toggleEditMode('${p.id}', true)" title="Edit">✎</button>
+              <button class="btn-delete" onclick="confirmDelete('${p.id}')" title="Delete">✕</button>
+            </div>
+          </div>
+
+          <!-- Edit Mode (hidden by default) -->
+          <div class="pick-edit" id="edit-${p.id}" style="display:none;">
+            <div class="edit-form">
+              <div class="edit-row">
+                <label>Name</label>
+                <input type="text" id="edit-name-${p.id}" value="${esc(p.name)}" class="edit-input">
+              </div>
+              
+              <div class="edit-row">
+                <label>Artist</label>
+                <input type="text" id="edit-artist-${p.id}" value="${esc(p.artist)}" class="edit-input">
+              </div>
+              
+              <div class="edit-row">
+                <label>Stage</label>
+                <select id="edit-stage-${p.id}" class="edit-input">
+                  <option value="">Select stage...</option>
+                  ${Object.keys(STAGE_STYLE).map(s => 
+                    `<option value="${s}" ${s === p.stage ? 'selected' : ''}>${s}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              
+              <div class="edit-row">
+                <label>Night</label>
+                <select id="edit-day-${p.id}" class="edit-input">
+                  ${DAY_ORDER.map(d => 
+                    `<option value="${d}" ${d === p.day ? 'selected' : ''}>${d}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              
+              <div class="edit-row">
+                <label>Start Time</label>
+                <select id="edit-start-${p.id}" class="edit-input">
+                  ${TIME_SLOTS.map((slot, idx) => 
+                    `<option value="${idx}" ${slot.label === p.start ? 'selected' : ''}>${slot.label}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              
+              <div class="edit-row">
+                <label>End Time</label>
+                <select id="edit-end-${p.id}" class="edit-input">
+                  <option value="150" ${!p.end ? 'selected' : ''}>Unknown (~1 hr)</option>
+                  ${TIME_SLOTS.map((slot, idx) => 
+                    `<option value="${idx}" ${slot.label === p.end ? 'selected' : ''}>${slot.label}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              
+              <div class="edit-actions">
+                <button class="btn-save" onclick="saveEdit('${p.id}')">💾 Save</button>
+                <button class="btn-cancel" onclick="toggleEditMode('${p.id}', false)">✕ Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
     }).join("");
 
     return `
