@@ -555,7 +555,7 @@ function renderGroupPlan() {
     return;
   }
 
-  const FUZZY_MINS = 15;
+  const FUZZY_MINS = 30;
   const mergeMap = new Map();
 
   allPicks.forEach(p => {
