@@ -356,6 +356,53 @@ async function deletePick(id) {
   }
 }
 
+async function editPick(id) {
+  const pick = allPicks.find(p => p.id === id);
+  if (!pick) return;
+
+  // Populate form with existing data
+  document.getElementById("input-name").value = pick.name;
+  document.getElementById("input-artist").value = pick.artist;
+  document.getElementById("input-stage").value = pick.stage;
+  document.getElementById("input-day").value = pick.day;
+
+  // Set time dials
+  const startIdx = TIME_SLOTS.findIndex(s => s.label === pick.start);
+  const endIdx = pick.end ? TIME_SLOTS.findIndex(s => s.label === pick.end) : 150;
+  
+  if (startIdx !== -1) {
+    document.getElementById("input-start").value = startIdx;
+    setDialToIndex("start", startIdx);
+  }
+  
+  if (endIdx !== -1) {
+    document.getElementById("input-end").value = endIdx;
+    setDialToIndex("end", endIdx);
+    
+    const noneCheck = document.getElementById("end-none-check");
+    const endDialWrap = document.getElementById("dial-end-wrap");
+    if (endIdx >= 150) {
+      noneCheck.checked = true;
+      endDialWrap.style.opacity = "0.3";
+      endDialWrap.style.pointerEvents = "none";
+    } else {
+      noneCheck.checked = false;
+      endDialWrap.style.opacity = "1";
+      endDialWrap.style.pointerEvents = "auto";
+    }
+  }
+
+  // Change button to "Update" mode
+  const btn = document.getElementById("btn-add-pick");
+  btn.textContent = "Update Pick";
+  btn.dataset.editId = id;
+
+  // Scroll to form
+  document.querySelector(".form-card").scrollIntoView({ behavior: "smooth" });
+  
+  // Switch to Sign Up tab if not already there
+  document.querySelector('[data-tab="signup"]').click();
+  
 function clearForm() {
   document.getElementById("input-artist").value = "";
   document.getElementById("input-stage").value  = "";
@@ -430,7 +477,7 @@ function renderSignupFeed() {
               <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
             </div>
           </div>
-          ${isMe ? `<button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>` : ""}
+          <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
         </div>`;
     }).join("");
 

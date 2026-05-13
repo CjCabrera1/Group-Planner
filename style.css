@@ -574,6 +574,48 @@ select option { background: #12003A; color: var(--text); }
   color: var(--mint);
   white-space: nowrap;
 }
+/* Pick card actions */
+.pick-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn-edit,
+.btn-delete {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-edit {
+  background: rgba(0, 180, 255, 0.2);
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+}
+
+.btn-edit:hover {
+  background: var(--cyan);
+  color: #000;
+}
+
+.btn-delete {
+  background: rgba(255, 59, 59, 0.2);
+  color: #FF3B3B;
+  border: 1px solid #FF3B3B;
+}
+
+.btn-delete:hover {
+  background: #FF3B3B;
+  color: #fff;
+}
 
 /* ── LOADING SPINNER ────────────────────────────────────────── */
 .spinner {
