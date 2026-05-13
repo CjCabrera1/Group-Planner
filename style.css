@@ -1107,6 +1107,169 @@ select option { background: #12003A; color: var(--text); }
   font-style: italic;
   padding: 8px 0 8px 130px;
 }
+/* ── INLINE EDIT MODE ──────────────────────────────────────── */
+.pick-view {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.pick-edit {
+  padding: 16px;
+  background: rgba(18, 0, 42, 0.7);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-row label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--purple);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #08001A;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px #7B2FFF33;
+}
+
+.edit-input option {
+  background: #12003A;
+  color: var(--text);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-save,
+.btn-cancel {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, var(--mint) 0%, var(--teal) 100%);
+  color: #000;
+  box-shadow: 0 0 16px var(--mint)44;
+}
+
+.btn-save:hover {
+  box-shadow: 0 0 24px var(--mint)88;
+  transform: translateY(-1px);
+}
+
+.btn-save:active {
+  transform: translateY(0);
+}
+
+.btn-cancel {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+
+.btn-cancel:hover {
+  background: rgba(255, 59, 59, 0.1);
+  border-color: var(--red);
+}
+
+/* Make pick card flexible for edit mode */
+.pick-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .edit-actions {
+    flex-direction: column;
+  }
+  
+  .btn-save,
+  .btn-cancel {
+    width: 100%;
+  }
+  
+  .pick-actions {
+    gap: 6px;
+  }
+  
+  .btn-edit,
+  .btn-delete {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation for edit mode toggle */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.pick-edit[style*="display: block"] {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Highlight edited card temporarily */
+@keyframes flash-success {
+  0%, 100% { background: #0D001E; }
+  50% { background: rgba(0, 200, 150, 0.15); }
+}
+
+.pick-card.just-saved {
+  animation: flash-success 0.6s ease-out;
+}
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }
