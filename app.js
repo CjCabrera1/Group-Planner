@@ -517,25 +517,22 @@ function renderSignupFeed() {
     const pickCards = picks.map(p => {
       const st = STAGE_STYLE[p.stage] || STAGE_STYLE["Other"];
       const endDisplay = p.end ? `→ ${p.end}` : "→ ~1 hr";
-      return `
-        <div class="pick-card" style="border-left-color:${st.border}">
-  <div class="pick-main">
-    <span class="pick-artist">${esc(p.artist)}</span>
-    <div class="pick-meta">
-      <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
-      <span class="pick-day">${esc(p.day)}</span>
-      <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
+  return `
+    <div class="pick-card" style="border-left-color:${st.border}">
+      <div class="pick-main">
+        <span class="pick-artist">${esc(p.artist)}</span>
+        <div class="pick-meta">
+          <span class="stage-pill" style="background:${st.bg};color:${st.fg}">${esc(p.stage)}</span>
+          <span class="pick-day">${esc(p.day)}</span>
+          <span class="pick-time">${esc(p.start)} ${endDisplay}</span>
+        </div>
+      </div>
+      <div class="pick-actions">
+        <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
+        <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
+      </div>
     </div>
-  </div>
-  <div class="pick-actions">
-    <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
-    <div class="pick-actions">
-  <button class="btn-edit" title="Edit" onclick="editPick('${p.id}')">✎</button>
-  <button class="btn-delete" title="Remove" onclick="deletePick('${p.id}')">✕</button>
-</div>
-  </div>
-</div>
-`;
+  `;
     }).join("");
 
     return `
